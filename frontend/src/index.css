@@ -111,13 +111,25 @@ a {
   }
 
   .sidebar .brand-text,
-  .sidebar .nav-text {
+  .sidebar .nav-text,
+  .sidebar .nav-section-title {
     display: none;
   }
 
   .nav-item {
     justify-content: center;
     padding: 0.75rem 0;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .page-header h1 {
+    margin-bottom: 0;
+    font-size: 1.5rem;
   }
 }
 
@@ -251,6 +263,14 @@ select:focus {
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
 }
 
+/* Improve Select Options Visibility */
+select option {
+  background-color: #e0f2fe;
+  /* Light Blue */
+  color: #111827;
+  /* Dark Text */
+}
+
 /* Utilities */
 .text-right {
   text-align: right;
@@ -270,6 +290,14 @@ select:focus {
 
 .text-muted {
   color: var(--text-muted);
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.font-bold {
+  font-weight: 700;
 }
 
 .badge {
@@ -292,6 +320,10 @@ select:focus {
 .badge.text-danger {
   background-color: rgba(239, 68, 68, 0.1);
   color: var(--danger);
+}
+
+.flex-col {
+  flex-direction: column;
 }
 
 .flex {

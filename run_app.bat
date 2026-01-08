@@ -6,7 +6,7 @@ echo.
 
 :: 1. Start Backend using python -m to avoid PATH issues
 echo [1/2] Iniciando Servidor Backend (API)...
-start "ArepasERP Backend" cmd /k "python -m uvicorn backend.main:app --reload --port 8000"
+start "ArepasERP Backend" cmd /k "python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000"
 
 :: 2. Wait 3 seconds for backend to warm up
 timeout /t 3 >nul

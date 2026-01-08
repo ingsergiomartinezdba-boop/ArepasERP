@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List
 from ..database import supabase
 from ..models import OrderCreate, OrderResponse, OrderItemResponse, Product, PriceRule
+from pydantic import BaseModel
 from datetime import datetime
 
 router = APIRouter()
@@ -235,3 +236,53 @@ def update_order(order_id: int, order: OrderCreate):
 
     # 6. Return Updated Order (Reuse get_order logic or construct)
     return get_order(order_id)
+
+class OrderStatusUpdate(BaseModel):
+    estado: str
+    medio_pago_id: int | None = None
+
+@router.patch("/{order_id}/status")
+def patch_order_status(order_id: int, status_update: OrderStatusUpdate):
+    # 1. Fetch Order
+    res = supabase.table("pedidos").select("*").eq("id", order_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    order = res.data[0]
+    
+    # 2. Validation
+    if status_update.estado == 'pagado':
+        # Must have payment method either in payload or already in DB
+        if not status_update.medio_pago_id and not order['medio_pago_id']:
+             raise HTTPException(status_code=400, detail="Payment Method is required when marking as Paid.")
+    
+    # 3. Update Data
+    update_data = {"estado": status_update.estado}
+    if status_update.medio_pago_id:
+        update_data["medio_pago_id"] = status_update.medio_pago_id
+        
+    supabase.table("pedidos").update(update_data).eq("id", order_id).execute()
+    
+    # 4. Update Accounts Receivable (Cuentas por Cobrar)
+    # If Paid -> Update valor_pagado to match total
+    # If Pendiente -> Update valor_pagado to 0? Or just leave it?
+    # Usually "Pagado" means fully paid.
+    
+    if status_update.estado == 'pagado':
+         supabase.table("cuentas_cobrar").update({
+             "valor_pagado": order['total'],
+             "estado": "pagado"
+         }).eq("pedido_id", order_id).execute()
+    elif status_update.estado == 'pendiente':
+        # Revert to unpaid
+         supabase.table("cuentas_cobrar").update({
+             "valor_pagado": 0,
+             "estado": "pendiente"
+         }).eq("pedido_id", order_id).execute()
+    elif status_update.estado == 'cancelado':
+        # Void the debt (delete accounts receivable record)
+        # Note: If we want to keep history of cancelled invoices, we'd need to update schema to allow 'cancelado' in cuentas_cobrar.estado
+        # But schema has constraint. Deleting is cleanest for now to remove from "Debtors" list.
+        supabase.table("cuentas_cobrar").delete().eq("pedido_id", order_id).execute()
+
+    return {"message": "Status updated"}

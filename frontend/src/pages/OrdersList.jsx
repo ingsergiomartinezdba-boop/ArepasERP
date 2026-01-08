@@ -7,36 +7,72 @@ export default function OrdersList() {
     const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [statusModal, setStatusModal] = useState({ open: false, orderId: null, currentStatus: '' });
+    const [paymentMethods, setPaymentMethods] = useState([]);
+    const [selectedMethod, setSelectedMethod] = useState('');
     const [summary, setSummary] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
     useEffect(() => {
         loadData();
+        loadPaymentMethods();
     }, [date]);
 
     const loadData = async () => {
         setLoading(true);
         try {
-            // 1. Get Orders (Ideally filtering by date in backend, but for now we fetch all and filter client side or update backend)
-            // Note: My backend ordersService.getAll() returns latest 50. 
-            // For a proper reporting tool, we should add date filter to getAll.
-            // I'll stick to the "Whatsapp Summary" endpoint as the source of truth for "Today's Deliveries" 
-            // but also fetch orders to show details if needed. 
-            // Actually, let's rely on getWhatsappSummary to get the text, and getOrders for the list UI.
-
             const ordersRes = await ordersService.getAll();
-            // Client-side filter for now since getAll is limited to 50 latest
             const todaysOrders = ordersRes.data.filter(o => o.fecha.startsWith(date));
             setOrders(todaysOrders);
 
-            // 2. Get Summary Text for this date
-            const reportRes = await reportsService.getWhatsappSummary(date); // Need to update frontend api.js to pass date
+            const reportRes = await reportsService.getWhatsappSummary(date);
             setSummary(reportRes.data.text);
-
         } catch (err) {
             console.error(err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadPaymentMethods = async () => {
+        try {
+            // Dynamically fetch active payment methods
+            const res = await import('../services/api').then(m => m.paymentMethodsService.getAll());
+            // Filter only active ones if needed, though backend returns all usually. 
+            // Better to filter active only in frontend or backend query.
+            const activeMethods = res.data.filter(m => m.activo);
+            setPaymentMethods(activeMethods);
+        } catch (err) {
+            console.error("Error loading payment methods", err);
+            // Fallback just in case
+            setPaymentMethods([
+                { id: 1, nombre: 'Efectivo' },
+                { id: 2, nombre: 'Nequi' },
+            ]);
+        }
+    };
+
+    const handleStatusClick = (order) => {
+        setStatusModal({ open: true, orderId: order.id, currentStatus: order.estado });
+        setSelectedMethod('');
+    };
+
+    const confirmStatusChange = async (newStatus) => {
+        if (newStatus === 'pagado' && !selectedMethod) {
+            alert("Por favor selecciona un medio de pago.");
+            return;
+        }
+
+        try {
+            await ordersService.updateStatus(statusModal.orderId, {
+                estado: newStatus,
+                medio_pago_id: newStatus === 'pagado' ? parseInt(selectedMethod) : null
+            });
+            setStatusModal({ open: false, orderId: null, currentStatus: '' });
+            loadData(); // Refresh list
+        } catch (err) {
+            console.error(err);
+            alert("Error al actualizar estado");
         }
     };
 
@@ -49,7 +85,7 @@ export default function OrdersList() {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-4">
+            <div className="page-header flex justify-between items-center mb-4">
                 <h1>Pedidos del Día</h1>
                 <div className="flex gap-2">
                     <input
@@ -95,9 +131,13 @@ export default function OrdersList() {
                                         </div>
                                         <div className="mt-2 flex justify-between items-center">
                                             <div className="flex gap-2">
-                                                <span className={`badge ${order.estado === 'pendiente' ? 'text-danger' : 'text-success'}`} style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                                                <button
+                                                    onClick={() => handleStatusClick(order)}
+                                                    className={`badge ${order.estado === 'pendiente' ? 'text-danger' : 'text-success'}`}
+                                                    style={{ fontSize: '0.75rem', textTransform: 'uppercase', background: 'transparent', border: '1px solid currentColor', cursor: 'pointer' }}
+                                                >
                                                     {order.estado}
-                                                </span>
+                                                </button>
                                                 <button
                                                     onClick={() => navigate(`/orders/${order.id}/edit`)}
                                                     className="btn btn-secondary"
@@ -116,6 +156,7 @@ export default function OrdersList() {
 
                 {/* Right Column: WhatsApp Preview */}
                 <div>
+                    {/* Existing WhatsApp Code */}
                     <h3 className="mb-2 flex items-center gap-2">
                         <Copy size={18} /> Reporte WhatsApp
                         {summary && (
@@ -137,6 +178,69 @@ export default function OrdersList() {
                     </div>
                 </div>
             </div>
+
+            {/* Status Modal */}
+            {statusModal.open && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 100,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div className="card" style={{ width: '90%', maxWidth: '300px', margin: 0 }}>
+                        <h3>Actualizar Estado</h3>
+                        <div className="flex flex-col gap-2 mt-4">
+                            <button
+                                onClick={() => confirmStatusChange('pendiente')}
+                                className="btn btn-secondary"
+                                disabled={statusModal.currentStatus === 'pendiente'}
+                            >
+                                Pendiente
+                            </button>
+
+                            <hr style={{ borderColor: 'var(--border)', margin: '0.5rem 0' }} />
+
+                            <label className="text-sm text-muted">Marcar como Pagado:</label>
+                            <select
+                                className="form-control mb-2"
+                                value={selectedMethod}
+                                onChange={e => setSelectedMethod(e.target.value)}
+                            >
+                                <option value="">-- Seleccionar Medio --</option>
+                                {paymentMethods.map(m => (
+                                    <option key={m.id} value={m.id}>{m.nombre}</option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={() => confirmStatusChange('pagado')}
+                                className="btn btn-primary"
+                            >
+                                PAGADO
+                            </button>
+
+                            <button
+                                onClick={() => setStatusModal({ ...statusModal, open: false })}
+                                className="btn btn-secondary mt-2"
+                            >
+                                Cerrar
+                            </button>
+
+                            <hr style={{ borderColor: 'var(--border)', margin: '0.5rem 0' }} />
+
+                            <button
+                                onClick={() => {
+                                    if (window.confirm('¿Seguro que deseas cancelar este pedido? Se eliminará de las cuentas por cobrar.')) {
+                                        confirmStatusChange('cancelado');
+                                    }
+                                }}
+                                className="btn btn-danger"
+                                style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)' }}
+                            >
+                                ANULAR PEDIDO
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -1,4 +1,4 @@
-import { Home, PlusCircle, Users, BarChart2, Package, ChefHat, List } from 'lucide-react';
+import { Home, PlusCircle, Users, BarChart2, Package, ChefHat, List, Settings, Truck, CreditCard, MessageCircle, FileText } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 export default function Layout() {
@@ -19,12 +19,14 @@ export default function Layout() {
                         <span className="nav-text">Inicio</span>
                     </NavLink>
 
+                    <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">PEDIDOS</div>
+
                     <NavLink
                         to="/orders"
                         className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     >
                         <List size={22} />
-                        <span className="nav-text">Pedidos</span>
+                        <span className="nav-text">Listado</span>
                     </NavLink>
 
                     <NavLink
@@ -36,12 +38,14 @@ export default function Layout() {
                     </NavLink>
 
                     <NavLink
-                        to="/clients"
+                        to="/whatsapp"
                         className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     >
-                        <Users size={22} />
-                        <span className="nav-text">Clientes</span>
+                        <MessageCircle size={22} />
+                        <span className="nav-text">Reporte WhatsApp</span>
                     </NavLink>
+
+                    <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">GASTOS</div>
 
                     <NavLink
                         to="/expenses"
@@ -51,12 +55,38 @@ export default function Layout() {
                         <span className="nav-text">Gastos</span>
                     </NavLink>
 
+                    <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">CONFIGURACIÓN</div>
+
+                    <NavLink
+                        to="/clients"
+                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    >
+                        <Users size={22} />
+                        <span className="nav-text">Clientes</span>
+                    </NavLink>
+
+                    <NavLink
+                        to="/suppliers"
+                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    >
+                        <Truck size={22} />
+                        <span className="nav-text">Proveedores</span>
+                    </NavLink>
+
                     <NavLink
                         to="/products"
                         className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     >
                         <Package size={22} />
                         <span className="nav-text">Productos</span>
+                    </NavLink>
+
+                    <NavLink
+                        to="/payment-methods"
+                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    >
+                        <CreditCard size={22} />
+                        <span className="nav-text">Medios de Pago</span>
                     </NavLink>
 
                     <button

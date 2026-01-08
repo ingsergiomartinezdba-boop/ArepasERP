@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { reportsService } from '../services/api';
-import { TrendingUp, TrendingDown, DollarSign, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, AlertCircle, CreditCard } from 'lucide-react';
 
 export default function Dashboard() {
+    const [expandedClient, setExpandedClient] = useState(null);
+
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -43,70 +45,149 @@ export default function Dashboard() {
     const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
 
     // MAPPING FIELDS: Check if backend sends 'ventas' or 'ventas_hoy'. Use fallback.
-    const ventas = stats.ventas ?? stats.ventas_hoy ?? 0;
-    const gastos = stats.gastos ?? stats.gastos_hoy ?? 0;
-    const utilidad = stats.utilidad_estimada ?? 0;
+    const ventasMes = stats.ventas_mes || 0;
+    const gastosMes = stats.gastos_mes || 0;
+    const ventasHoy = stats.ventas_hoy || 0;
+    const gastosHoy = stats.gastos_hoy || 0;
     const deudores = stats.clientes_deudores || [];
+
+    // Group Debtors
+    const groupedDebtors = deudores.reduce((acc, curr) => {
+        const clientId = curr.cliente_id || curr.nombre; // Fallback to name if id missing
+        if (!acc[clientId]) {
+            acc[clientId] = {
+                id: clientId,
+                nombre: curr.nombre,
+                total: 0,
+                items: []
+            };
+        }
+        acc[clientId].total += curr.saldo;
+        acc[clientId].items.push(curr);
+        return acc;
+    }, {});
+
+    const debtorsList = Object.values(groupedDebtors);
 
     return (
         <div>
+            {/* Headers and Widgets code ... keep same structure until Cuentas por Cobrar */}
             <header className="flex justify-between items-center mb-4">
-                <h1>Resumen Diario</h1>
+                <h1>Dashboard</h1>
                 <span className="text-muted">{new Date().toLocaleDateString()}</span>
             </header>
 
-            <div className="stats-grid">
+            {/* Monthly Stats */}
+            <h2 className="text-lg mb-2">Este Mes</h2>
+            <div className="stats-grid mb-4">
                 <div className="card">
                     <div className="flex items-center gap-2 mb-2 text-muted">
-                        <TrendingUp size={16} />
-                        <small>Ventas Hoy</small>
+                        <TrendingUp size={16} className="text-success" />
+                        <small>Ventas Mes</small>
                     </div>
-                    <h3>{formatCurrency(ventas)}</h3>
+                    <h3>{formatCurrency(ventasMes)}</h3>
                 </div>
 
                 <div className="card">
                     <div className="flex items-center gap-2 mb-2 text-muted">
-                        <TrendingDown size={16} />
-                        <small>Gastos Hoy</small>
+                        <TrendingDown size={16} className="text-danger" />
+                        <small>Gastos Mes</small>
                     </div>
-                    <h3>{formatCurrency(gastos)}</h3>
+                    <h3>{formatCurrency(gastosMes)}</h3>
                 </div>
             </div>
 
-            <div className="card flex justify-between items-center" style={{ borderColor: utilidad >= 0 ? 'var(--secondary)' : 'var(--danger)' }}>
-                <div>
-                    <div className="flex items-center gap-2 mb-1 text-muted">
+            {/* Daily Stats */}
+            <h2 className="text-lg mb-2">Hoy</h2>
+            <div className="stats-grid mb-4">
+                <div className="card">
+                    <div className="flex items-center gap-2 mb-2 text-muted">
                         <DollarSign size={16} />
-                        <small>Utilidad Estimada</small>
+                        <small>Ventas Hoy</small>
                     </div>
-                    <h2 className={utilidad >= 0 ? "text-success" : "text-danger"}>
-                        {formatCurrency(utilidad)}
-                    </h2>
+                    <h3>{formatCurrency(ventasHoy)}</h3>
                 </div>
+
+                <div className="card">
+                    <div className="flex items-center gap-2 mb-2 text-muted">
+                        <AlertCircle size={16} />
+                        <small>Gastos Hoy</small>
+                    </div>
+                    <h3>{formatCurrency(gastosHoy)}</h3>
+                </div>
+            </div>
+
+            {/* Cash Flow Widget */}
+            <h2 className="text-lg mt-4 mb-2">Flujo de Caja</h2>
+            <div className="stats-grid mb-4">
+                {stats.flujo_caja && stats.flujo_caja.length > 0 ? (
+                    stats.flujo_caja.map((item, idx) => (
+                        <div key={idx} className="card">
+                            <div className="flex items-center gap-2 mb-2 text-muted">
+                                <CreditCard size={16} />
+                                <small>{item.medio}</small>
+                            </div>
+                            <h3 className={item.saldo >= 0 ? "text-success" : "text-danger"}>
+                                {formatCurrency(item.saldo)}
+                            </h3>
+                            <div className="flex justify-between mt-2 pt-2" style={{ borderTop: '1px solid var(--border)', fontSize: '0.75rem' }}>
+                                <span className="text-success" title="Ingresos">+{formatCurrency(item.ingresos)}</span>
+                                <span className="text-danger" title="Egresos">-{formatCurrency(item.egresos)}</span>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-muted">No hay datos de flujo de caja.</p>
+                )}
             </div>
 
             <h2>Cuentas por Cobrar</h2>
-            {deudores.length > 0 ? (
+            {debtorsList.length > 0 ? (
                 <div className="card" style={{ padding: '0.5rem' }}>
-                    {deudores.map((deuda) => (
-                        <div key={deuda.cuenta_cobrar_id || Math.random()} style={{ padding: '0.75rem', borderBottom: '1px solid var(--border)' }}>
-                            <div className="flex justify-between">
-                                <strong>{deuda.nombre}</strong>
-                                <span className="text-danger">{formatCurrency(deuda.saldo)}</span>
+                    {debtorsList.map((client) => (
+                        <div key={client.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <div
+                                className="flex justify-between items-center"
+                                style={{ padding: '1rem', cursor: 'pointer' }}
+                                onClick={() => setExpandedClient(expandedClient === client.id ? null : client.id)}
+                            >
+                                <div>
+                                    <strong>{client.nombre}</strong>
+                                    <div className="text-muted text-xs">{client.items.length} facturas pendientes</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-danger font-bold">{formatCurrency(client.total)}</div>
+                                    <div className="text-xs text-secondary" style={{ marginTop: '0.25rem' }}>
+                                        {expandedClient === client.id ? 'Ocultar detalle' : 'Ver detalle'}
+                                    </div>
+                                </div>
                             </div>
-                            <small className="text-muted">Vence: {deuda.fecha_vencimiento}</small>
+
+                            {/* Detailed List */}
+                            {expandedClient === client.id && (
+                                <div style={{ backgroundColor: 'rgba(0,0,0,0.2)', padding: '0 1rem 1rem 1rem' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                        <tbody>
+                                            {client.items.map((item, idx) => (
+                                                <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <td style={{ padding: '0.5rem 0', color: 'var(--text-muted)' }}>
+                                                        Vence: {item.fecha_vencimiento}
+                                                    </td>
+                                                    <td style={{ padding: '0.5rem 0', textAlign: 'right' }}>
+                                                        {formatCurrency(item.saldo)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
             ) : (
                 <p className="text-muted">No hay cuentas pendientes</p>
             )}
-
-            <div className="flex gap-2 mt-4">
-                <a href="/whatsapp" className="btn btn-secondary" style={{ flex: 1, textAlign: 'center' }}>
-                    Resumen WhatsApp
-                </a>
-            </div>
         </div>
     );
 }
