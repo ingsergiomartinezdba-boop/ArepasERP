@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Automatically determine URL based on environment or default to local backend
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -36,7 +36,7 @@ export const expensesService = {
 
 export const reportsService = {
     getDashboard: () => api.get('/reports/dashboard'),
-    getWhatsappSummary: () => api.get('/reports/whatsapp-summary'),
+    getWhatsappSummary: (date) => api.get(`/reports/whatsapp-summary?date_str=${date || ''}`),
 };
 
 export default api;

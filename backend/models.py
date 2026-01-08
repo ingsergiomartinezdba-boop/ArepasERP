@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, datetime
-from decimal import Decimal
 
 # --- Shared Models ---
 
@@ -19,7 +18,7 @@ class ClientBase(BaseModel):
     ciudad: Optional[str] = "Bogotá"
     canal_venta: Optional[str] = None # whatsapp, local, domicilio
     condicion_pago: Optional[str] = "contado"
-    cupo_credito: Optional[Decimal] = 0
+    cupo_credito: Optional[float] = 0
 
 class ClientCreate(ClientBase):
     pass
@@ -40,8 +39,8 @@ class ProductBase(BaseModel):
     nombre: str
     codigo_corto: str
     tipo_producto: str # arepa, queso, otro
-    precio_estandar: Decimal
-    costo_unitario: Decimal
+    precio_estandar: float
+    costo_unitario: float
     unidad_medida: str
     activo: Optional[bool] = True
     proveedor_id: Optional[int] = None
@@ -61,7 +60,7 @@ class Product(ProductBase):
 class PriceRuleBase(BaseModel):
     cliente_id: int
     producto_id: int
-    precio_especial: Decimal
+    precio_especial: float
     activo: Optional[bool] = True
 
 class PriceRuleCreate(PriceRuleBase):
@@ -88,15 +87,15 @@ class OrderItemResponse(BaseModel):
     producto_id: int
     producto_nombre: Optional[str] = None # Joined field
     cantidad: int
-    precio_aplicado: Decimal
-    subtotal: Decimal
+    precio_aplicado: float
+    subtotal: float
 
 class OrderResponse(BaseModel):
     id: int
     cliente_id: int
     cliente_nombre: Optional[str] = None # Joined field
     fecha: datetime
-    total: Decimal
+    total: float
     medio_pago_id: Optional[int]
     estado: str
     items: List[OrderItemResponse] = []
@@ -111,7 +110,7 @@ class ExpenseBase(BaseModel):
     categoria: str
     tipo_gasto: str
     fecha: date
-    valor: Decimal
+    valor: float
     proveedor_id: Optional[int] = None
     medio_pago_id: Optional[int] = None
     pedido_id: Optional[int] = None

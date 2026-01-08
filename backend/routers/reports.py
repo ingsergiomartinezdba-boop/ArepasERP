@@ -1,6 +1,8 @@
 from fastapi import APIRouter
+from fastapi import APIRouter
 from ..database import supabase
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from datetime import datetime
 
 router = APIRouter()
 
@@ -13,52 +15,49 @@ def get_dashboard_stats():
     gastos = supabase.table("view_gastos_hoy").select("total_gastos").execute()
     deudores = supabase.table("view_clientes_deudores").select("*").execute()
     
-    total_ventas = ventas.data[0]['total_ventas'] if ventas.data else 0
-    total_gastos = gastos.data[0]['total_gastos'] if gastos.data else 0
+    val_ventas = float(ventas.data[0]['total_ventas']) if ventas.data else 0.0
+    val_gastos = float(gastos.data[0]['total_gastos']) if gastos.data else 0.0
     
     return {
-        "ventas_hoy": total_ventas,
-        "gastos_hoy": total_gastos,
-        "utilidad_estimada": float(total_ventas) - float(total_gastos),
+        "ventas_hoy": val_ventas,
+        "gastos_hoy": val_gastos,
+        "utilidad_estimada": val_ventas - val_gastos,
         "clientes_deudores": deudores.data
     }
 
 @router.get("/whatsapp-summary")
-def get_whatsapp_summary():
-    # Logic to aggregate today's or pending orders for the delivery summary
-    # Group by Client -> List Products
-    
-    # 1. Fetch today's orders with details
-    # Assuming "summary" is for today's delivery.
-    # We might want a date filter query param later.
-    
-    today_orders = supabase.table("pedidos")\
-        .select("*, clients:clientes(nombre), details:detalle_pedido(cantidad, productos(codigo_corto))")\
-        .eq("estado", "pendiente")\
-        .gte("fecha", "2024-01-01") \
-        .order("id")\
-        .execute() 
-        # Note: simplistic date filter, in real app use proper date range for "today"
-        # Since I can't easily do "today" dynamic filter in simple Postgrest without logic, 
-        # I'll rely on the frontend or backend logic to filter by date if strictly needed.
-        # However, for now, let's just fetch 'pendiente' orders for the summary as that's what's needed to be delivered.
-        
+def get_whatsapp_summary(date_str: Optional[str] = None):
+    # Default to today if no date provided
+    if not date_str:
+        target_date = datetime.now().strftime("%Y-%m-%d")
+    else:
+        target_date = date_str
+
+    # Fetch orders for the date
+    # We join with clients and order details -> products
     response = supabase.table("pedidos")\
-        .select("id, total, clientes(nombre), detalle_pedido(cantidad, productos(codigo_corto))")\
+        .select("id, total, estado, fecha, clientes(nombre), detalle_pedido(cantidad, productos(codigo_corto))")\
         .eq("estado", "pendiente")\
+        .gte("fecha", f"{target_date}T00:00:00")\
+        .lte("fecha", f"{target_date}T23:59:59")\
+        .order("id")\
         .execute()
-        
-    summary_text = ""
     
-    for order in response.data:
+    # Sort by Client Name using Python since Supabase join sorting can be tricky
+    orders = sorted(response.data, key=lambda x: x['clientes']['nombre'] if x['clientes'] else "")
+
+    summary_text = ""
+    summary_text += f"*PEDIDOS {target_date}*\n\n"
+    
+    for order in orders:
         client_name = order['clientes']['nombre']
         total = order['total']
         items = order['detalle_pedido']
         
-        summary_text += f"{client_name} ${total:,.0f}\n"
+        summary_text += f"*{client_name}* ${total:,.0f}\n"
         for item in items:
             qty = item['cantidad']
-            code = item['productos']['codigo_corto']
+            code = item['productos']['codigo_corto'] if item['productos'] else "?"
             summary_text += f"{qty} {code}\n"
         
         summary_text += "\n"
