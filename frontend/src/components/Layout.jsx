@@ -20,6 +20,14 @@ export default function Layout() {
                     </NavLink>
 
                     <NavLink
+                        to="/orders"
+                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    >
+                        <List size={22} />
+                        <span className="nav-text">Pedidos</span>
+                    </NavLink>
+
+                    <NavLink
                         to="/orders/new"
                         className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     >

@@ -21,6 +21,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="orders" element={<OrdersList />} />
             <Route path="orders/new" element={<OrderForm />} />
+            <Route path="orders/:id/edit" element={<OrderForm />} />
             <Route path="whatsapp" element={<WhatsappSummary />} />
             <Route path="clients" element={<Clients />} />
             <Route path="expenses" element={<Expenses />} />

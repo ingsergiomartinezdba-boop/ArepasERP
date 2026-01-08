@@ -19,9 +19,19 @@ def get_client(client_id: int):
 
 @router.post("/", response_model=Client, status_code=status.HTTP_201_CREATED)
 def create_client(client: ClientCreate):
-    client_data = client.dict()
-    response = supabase.table("clientes").insert(client_data).execute()
-    return response.data[0]
+    try:
+        client_data = client.dict()
+        print(f"Attempting to create client: {client_data}") # Debug log
+        response = supabase.table("clientes").insert(client_data).execute()
+        
+        if not response.data:
+            print("❌ Error: Supabase returned no data. Check RLS Policies.")
+            raise HTTPException(status_code=500, detail="Database insert failed (No data returned). Check RLS policies.")
+            
+        return response.data[0]
+    except Exception as e:
+        print(f"❌ Exception creating client: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{client_id}", response_model=Client)
 def update_client(client_id: int, client: ClientUpdate):

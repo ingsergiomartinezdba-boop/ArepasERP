@@ -42,10 +42,14 @@ def create_order(order: OrderCreate):
         })
 
     # 2. Create Order
+    domicilio = order.valor_domicilio if order.valor_domicilio else 0
+    total_order += domicilio
+    
     order_data = {
         "cliente_id": order.cliente_id,
         "fecha": order.fecha.isoformat() if order.fecha else datetime.now().isoformat(),
         "total": total_order,
+        "valor_domicilio": domicilio,
         "medio_pago_id": order.medio_pago_id,
         "estado": order.estado
     }
@@ -90,6 +94,7 @@ def create_order(order: OrderCreate):
         cliente_id=order.cliente_id,
         fecha=datetime.fromisoformat(order_data['fecha']),
         total=total_order,
+        valor_domicilio=domicilio,
         medio_pago_id=order.medio_pago_id,
         estado=order.estado,
         items=response_items
@@ -121,8 +126,112 @@ def get_orders():
             "cliente_nombre": o['clientes']['nombre'] if o['clientes'] else "Unknown",
             "fecha": o['fecha'],
             "total": o['total'],
+            "valor_domicilio": o.get('valor_domicilio', 0),
             "medio_pago_id": o['medio_pago_id'],
             "estado": o['estado'],
             "items": items
         })
     return orders
+
+@router.get("/{order_id}", response_model=OrderResponse)
+def get_order(order_id: int):
+    response = supabase.table("pedidos").select("*, clientes(nombre), detalle_pedido(id, producto_id, cantidad, precio_aplicado, subtotal, productos(nombre))").eq("id", order_id).execute()
+    
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Order not found")
+        
+    o = response.data[0]
+    items = []
+    for i in o['detalle_pedido']:
+        items.append({
+            "id": i['id'],
+            "producto_id": i['producto_id'],
+            "producto_nombre": i['productos']['nombre'] if i['productos'] else "Unknown",
+            "cantidad": i['cantidad'],
+            "precio_aplicado": i['precio_aplicado'],
+            "subtotal": i['subtotal']
+        })
+    
+    return {
+        "id": o['id'],
+        "cliente_id": o['cliente_id'],
+        "cliente_nombre": o['clientes']['nombre'] if o['clientes'] else "Unknown",
+        "fecha": o['fecha'],
+        "total": o['total'],
+        "valor_domicilio": o.get('valor_domicilio', 0),
+        "medio_pago_id": o['medio_pago_id'],
+        "estado": o['estado'],
+        "items": items
+    }
+
+@router.put("/{order_id}", response_model=OrderResponse)
+def update_order(order_id: int, order: OrderCreate):
+    # 1. Verify existence
+    existing = supabase.table("pedidos").select("*").eq("id", order_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # 2. Calculate New Totals & Items (Existing Logic Reused)
+    total_order = 0
+    order_items_data = []
+
+    for item in order.items:
+        # Get Product
+        prod_res = supabase.table("productos").select("*").eq("id", item.producto_id).execute()
+        if not prod_res.data:
+            continue # Skip invalid products or raise error
+        product = prod_res.data[0]
+        
+        # Determine Price (Re-check rules in case they changed, or stick to original?)
+        # Better to re-calculate for accuracy on "Modify"
+        price_res = supabase.table("precios_cliente").select("precio_especial").eq("cliente_id", order.cliente_id).eq("producto_id", item.producto_id).eq("activo", True).execute()
+        
+        if price_res.data:
+            precio_aplicado = float(price_res.data[0]['precio_especial'])
+        else:
+            precio_aplicado = float(product['precio_estandar'])
+            
+        subtotal = precio_aplicado * item.cantidad
+        total_order += subtotal
+        
+        order_items_data.append({
+            "pedido_id": order_id,
+            "producto_id": item.producto_id,
+            "cantidad": item.cantidad,
+            "precio_aplicado": precio_aplicado,
+            "subtotal": subtotal
+        })
+
+    domicilio = order.valor_domicilio if order.valor_domicilio else 0
+    total_order += domicilio
+
+    # 3. Update Order Header
+    order_data = {
+        "cliente_id": order.cliente_id,
+        "fecha": order.fecha.isoformat() if order.fecha else datetime.now().isoformat(),
+        "total": total_order,
+        "valor_domicilio": domicilio,
+        "medio_pago_id": order.medio_pago_id,
+        "estado": order.estado
+    }
+    supabase.table("pedidos").update(order_data).eq("id", order_id).execute()
+
+    # 4. Replace Items (Delete All for this Order -> Insert New)
+    # Note: RLS might block DELETE if not configured? No, "Acceso Total Detalle" covers it.
+    supabase.table("detalle_pedido").delete().eq("pedido_id", order_id).execute()
+    if order_items_data:
+        supabase.table("detalle_pedido").insert(order_items_data).execute()
+
+    # 5. Update Accounts Receivable (Cuentas por Cobrar)
+    # Find associated AR record
+    ar_res = supabase.table("cuentas_cobrar").select("*").eq("pedido_id", order_id).execute()
+    if ar_res.data:
+        ar_id = ar_res.data[0]['id']
+        current_paid = ar_res.data[0]['valor_pagado'] or 0
+        # Update valur_total. Logic for 'saldo' is generated always generated column in DB? 
+        # Checking schema... yes: saldo DECIMAL GENERATED ALWAYS AS (valor_total - valor_pagado) STORED
+        # So we only update valor_total.
+        supabase.table("cuentas_cobrar").update({"valor_total": total_order}).eq("id", ar_id).execute()
+
+    # 6. Return Updated Order (Reuse get_order logic or construct)
+    return get_order(order_id)

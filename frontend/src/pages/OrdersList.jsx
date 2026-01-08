@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { ordersService, reportsService } from '../services/api';
-import { RefreshCw, Copy, List, Calendar } from 'lucide-react';
+import { RefreshCw, Copy, List, Calendar, Edit } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function OrdersList() {
+    const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [summary, setSummary] = useState('');
@@ -84,11 +86,26 @@ export default function OrdersList() {
                                                     <span>{formatCurrency(item.subtotal)}</span>
                                                 </div>
                                             ))}
+                                            {order.valor_domicilio > 0 && (
+                                                <div className="flex justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '4px', paddingTop: '4px' }}>
+                                                    <span>Domicilio</span>
+                                                    <span>{formatCurrency(order.valor_domicilio)}</span>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="mt-2 flex justify-between items-center">
-                                            <span className={`badge ${order.estado === 'pendiente' ? 'text-danger' : 'text-success'}`} style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                                                {order.estado}
-                                            </span>
+                                            <div className="flex gap-2">
+                                                <span className={`badge ${order.estado === 'pendiente' ? 'text-danger' : 'text-success'}`} style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                                                    {order.estado}
+                                                </span>
+                                                <button
+                                                    onClick={() => navigate(`/orders/${order.id}/edit`)}
+                                                    className="btn btn-secondary"
+                                                    style={{ padding: '0.1rem 0.4rem', fontSize: '0.75rem' }}
+                                                >
+                                                    <Edit size={12} style={{ marginRight: '4px' }} /> Editar
+                                                </button>
+                                            </div>
                                             <small className="text-muted">{new Date(order.fecha).toLocaleTimeString().slice(0, 5)}</small>
                                         </div>
                                     </div>

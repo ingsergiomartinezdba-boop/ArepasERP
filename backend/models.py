@@ -80,6 +80,7 @@ class OrderCreate(BaseModel):
     medio_pago_id: Optional[int] = None
     items: List[OrderItemCreate]
     fecha: Optional[datetime] = None # Defaults to now if None
+    valor_domicilio: Optional[float] = 0
     estado: Optional[str] = "pendiente"
 
 class OrderItemResponse(BaseModel):
@@ -96,6 +97,7 @@ class OrderResponse(BaseModel):
     cliente_nombre: Optional[str] = None # Joined field
     fecha: datetime
     total: float
+    valor_domicilio: Optional[float] = 0
     medio_pago_id: Optional[int]
     estado: str
     items: List[OrderItemResponse] = []

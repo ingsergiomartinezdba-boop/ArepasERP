@@ -1,22 +1,31 @@
 import { useState, useEffect } from 'react';
 import { clientsService, productsService, ordersService } from '../services/api';
-import { useNavigate } from 'react-router-dom';
-import { Save, Plus, Trash2 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Save, Search } from 'lucide-react';
 
 export default function OrderForm() {
     const navigate = useNavigate();
+    const { id } = useParams();
+    const isEditing = Boolean(id);
+
     const [clients, setClients] = useState([]);
     const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const [selectedClient, setSelectedClient] = useState('');
-    const [orderItems, setOrderItems] = useState([]); // { tempId, producto_id, cantidad }
+    // Map of productId -> quantity
+    const [quantities, setQuantities] = useState({});
+    const [deliveryFee, setDeliveryFee] = useState(0);
+    const [searchTerm, setSearchTerm] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [status, setStatus] = useState('pendiente'); // For editing
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [id]);
 
     const loadData = async () => {
+        setLoading(true);
         try {
             const [cRes, pRes] = await Promise.all([
                 clientsService.getAll(),
@@ -24,119 +33,229 @@ export default function OrderForm() {
             ]);
             setClients(cRes.data);
             setProducts(pRes.data);
+
+            if (isEditing) {
+                const orderRes = await ordersService.getById(id);
+                const order = orderRes.data;
+                setSelectedClient(order.cliente_id);
+                setDeliveryFee(order.valor_domicilio || 0);
+                setStatus(order.estado);
+
+                const qtyMap = {};
+                order.items.forEach(item => {
+                    qtyMap[item.producto_id] = item.cantidad;
+                });
+                setQuantities(qtyMap);
+            }
         } catch (err) {
             console.error("Error loading form data", err);
+            if (isEditing) alert("Error cargando pedido");
+        } finally {
+            setLoading(false);
         }
     };
 
-    const addItem = () => {
-        setOrderItems([...orderItems, { tempId: Date.now(), producto_id: '', cantidad: 1 }]);
-    };
-
-    const removeItem = (id) => {
-        setOrderItems(orderItems.filter(i => i.tempId !== id));
-    };
-
-    const updateItem = (id, field, value) => {
-        setOrderItems(orderItems.map(i => i.tempId === id ? { ...i, [field]: value } : i));
+    const handleQuantityChange = (productId, val) => {
+        const qty = parseInt(val) || 0;
+        setQuantities(prev => ({
+            ...prev,
+            [productId]: qty
+        }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!selectedClient || orderItems.length === 0) return;
+        if (!selectedClient) {
+            alert("Por favor seleccione un cliente");
+            return;
+        }
 
-        // Filter out invalid items
-        const validItems = orderItems.filter(i => i.producto_id && i.cantidad > 0);
-        if (validItems.length === 0) return;
+        const items = Object.entries(quantities)
+            .filter(([_, qty]) => qty > 0)
+            .map(([pid, qty]) => ({
+                producto_id: parseInt(pid),
+                cantidad: qty
+            }));
+
+        if (items.length === 0) {
+            alert("Seleccione al menos un producto");
+            return;
+        }
 
         setSubmitting(true);
         try {
             const payload = {
                 cliente_id: parseInt(selectedClient),
-                items: validItems.map(i => ({ producto_id: parseInt(i.producto_id), cantidad: parseInt(i.cantidad) })),
-                // Default values for now
-                estado: 'pendiente'
+                items: items,
+                valor_domicilio: parseFloat(deliveryFee) || 0,
+                estado: status // Preserve or update status
             };
 
-            await ordersService.create(payload);
+            if (isEditing) {
+                await ordersService.update(id, payload);
+            } else {
+                await ordersService.create(payload);
+            }
             navigate('/');
         } catch (err) {
-            alert("Error al crear pedido");
+            alert("Error al guardar pedido");
             console.error(err);
         } finally {
             setSubmitting(false);
         }
     };
 
+    const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+
+    const filteredProducts = products.filter(p =>
+        p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.codigo_corto.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Calculate total on the fly
+    const totalProductos = products.reduce((acc, p) => {
+        const qty = quantities[p.id] || 0;
+        return acc + (qty * p.precio_estandar);
+    }, 0);
+
+    const totalEstimado = totalProductos + (parseFloat(deliveryFee) || 0);
+
+    if (loading) return <div className="text-center mt-4">Cargando...</div>;
+
     return (
-        <div>
-            <h1>Nuevo Pedido</h1>
+        <div className="pb-20"> {/* Padding bottom for fixed footer */}
+            <h1 className="mb-4">{isEditing ? 'Editar Pedido' : 'Nuevo Pedido'}</h1>
 
             <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label>Cliente</label>
-                    <select
-                        value={selectedClient}
-                        onChange={e => setSelectedClient(e.target.value)}
-                        required
-                        autoFocus
-                    >
-                        <option value="">Seleccionar Cliente...</option>
-                        {clients.map(c => (
-                            <option key={c.id} value={c.id}>{c.nombre}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="card">
-                    <div className="flex justify-between items-center mb-2">
-                        <h3>Productos</h3>
-                        <button type="button" onClick={addItem} className="btn btn-secondary" style={{ padding: '0.5rem' }}>
-                            <Plus size={20} />
-                        </button>
+                <div className="card mb-4 sticky-top-mobile" style={{ zIndex: 10, borderBottom: '2px solid var(--primary)' }}>
+                    <div className="form-group mb-0">
+                        <label className="text-muted text-sm">Cliente</label>
+                        <select
+                            value={selectedClient}
+                            onChange={e => setSelectedClient(e.target.value)}
+                            required
+                            className="form-control-lg"
+                            style={{ fontWeight: 'bold' }}
+                        >
+                            <option value="">Seleccionar Cliente...</option>
+                            {clients.map(c => (
+                                <option key={c.id} value={c.id}>{c.nombre}</option>
+                            ))}
+                        </select>
                     </div>
 
-                    {orderItems.map((item, index) => (
-                        <div key={item.tempId} className="flex gap-2 mb-2 items-end">
-                            <div style={{ flex: 2 }}>
-                                <select
-                                    value={item.producto_id}
-                                    onChange={e => updateItem(item.tempId, 'producto_id', e.target.value)}
-                                    required
-                                >
-                                    <option value="">Producto...</option>
-                                    {products.map(p => (
-                                        <option key={p.id} value={p.id}>{p.nombre} ({p.codigo_corto})</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <input
-                                    type="number"
-                                    value={item.cantidad}
-                                    onChange={e => updateItem(item.tempId, 'cantidad', e.target.value)}
-                                    min="1"
-                                    required
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => removeItem(item.tempId)}
-                                className="btn btn-secondary text-danger"
-                                style={{ padding: '0.75rem' }}
+                    {isEditing && (
+                        <div className="form-group mb-0 mt-2">
+                            <label className="text-muted text-sm">Estado</label>
+                            <select
+                                value={status}
+                                onChange={e => setStatus(e.target.value)}
+                                className="form-control"
+                                style={{ fontWeight: 'bold' }}
                             >
-                                <Trash2 size={18} />
-                            </button>
+                                <option value="pendiente">Pendiente</option>
+                                <option value="pagado">Pagado</option>
+                                <option value="parcial">Parcial</option>
+                                <option value="cancelado">Cancelado</option>
+                            </select>
                         </div>
-                    ))}
-
-                    {orderItems.length === 0 && <p className="text-muted text-center py-4">Agrega productos</p>}
+                    )}
                 </div>
 
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                    <Save size={20} style={{ marginRight: '8px' }} />
-                    Guardar Pedido
-                </button>
+                <div className="mb-3 relative">
+                    <Search className="absolute left-3 top-3 text-muted" size={20} />
+                    <input
+                        type="text"
+                        placeholder="Buscar producto..."
+                        className="pl-10"
+                        style={{ paddingLeft: '2.5rem' }}
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </div>
+
+                <div className="product-grid">
+                    {filteredProducts.map(p => {
+                        const qty = quantities[p.id] || '';
+                        return (
+                            <div key={p.id} className={`card product-card ${qty > 0 ? 'active-product' : ''}`}
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'space-between',
+                                    border: qty > 0 ? '2px solid var(--primary)' : '1px solid var(--border)',
+                                    transition: 'all 0.2s'
+                                }}>
+                                <div>
+                                    <div className="flex justify-between items-start">
+                                        <h3 className="text-lg m-0">{p.nombre}</h3>
+                                        <span className="badge badge-secondary">{p.codigo_corto}</span>
+                                    </div>
+                                    <p className="text-muted mt-1">{formatCurrency(p.precio_estandar)}</p>
+                                </div>
+
+                                <div className="mt-3">
+                                    <label className="text-xs text-muted">Cantidad</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={qty}
+                                        onChange={e => handleQuantityChange(p.id, e.target.value)}
+                                        className="text-center text-xl font-bold"
+                                        placeholder="0"
+                                        style={{ background: qty > 0 ? 'rgba(245, 158, 11, 0.1)' : 'transparent' }}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Fixed Footer for Total and Save */}
+                <div style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    background: 'var(--card-bg)',
+                    padding: '1rem',
+                    borderTop: '1px solid var(--border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    boxShadow: '0 -4px 10px rgba(0,0,0,0.3)',
+                    zIndex: 100
+                }}>
+                    <div className="flex justify-between items-center w-full">
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm font-bold m-0">Domicilio:</label>
+                            <input
+                                type="number"
+                                value={deliveryFee}
+                                onChange={e => setDeliveryFee(e.target.value)}
+                                className="form-control form-control-sm"
+                                style={{ width: '100px', fontWeight: 'bold' }}
+                                min="0" step="500"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-between items-center w-full">
+                        <div>
+                            <small className="text-muted">Total Estimado</small>
+                            <h2 className="text-primary m-0">{formatCurrency(totalEstimado)}</h2>
+                        </div>
+                        <button
+                            type="submit"
+                            className="btn btn-primary btn-lg"
+                            disabled={submitting || totalEstimado === 0}
+                            style={{ padding: '0.75rem 2rem' }}
+                        >
+                            <Save size={24} className="mr-2" />
+                            {submitting ? '...' : 'Confirmar'}
+                        </button>
+                    </div>
+                </div>
             </form>
         </div>
     );
