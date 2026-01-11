@@ -102,10 +102,21 @@ def create_order(order: OrderCreate):
     )
 
 @router.get("/", response_model=List[OrderResponse])
-def get_orders():
+def get_orders(start_date: str = None, end_date: str = None):
     # Fetch orders with items
     # Supabase join syntax: select("*, detalle_pedido(*, productos(nombre))")
-    response = supabase.table("pedidos").select("*, clientes(nombre), detalle_pedido(id, producto_id, cantidad, precio_aplicado, subtotal, productos(nombre))").order("fecha", desc=True).limit(50).execute()
+    query = supabase.table("pedidos").select("*, clientes(nombre), detalle_pedido(id, producto_id, cantidad, precio_aplicado, subtotal, productos(nombre))").order("fecha", desc=True)
+    
+    if start_date and end_date:
+        # Full day coverage usually implies adding time to end_date if it's just YYYY-MM-DD
+        # But we'll assume caller handles it or we do simple string compare
+        if len(end_date) == 10: # YYYY-MM-DD
+             end_date += "T23:59:59"
+        query = query.gte("fecha", start_date).lte("fecha", end_date)
+    else:
+        query = query.limit(50)
+        
+    response = query.execute()
     
     # Transform to flat structure for Pydantic models if needed or use Aliases
     orders = []
@@ -207,14 +218,21 @@ def update_order(order_id: int, order: OrderCreate):
     total_order += domicilio
 
     # 3. Update Order Header
+    # Ensure creation date ('fecha') is NOT changed.
+    # Add updated_at timestamp.
     order_data = {
         "cliente_id": order.cliente_id,
-        "fecha": order.fecha.isoformat() if order.fecha else datetime.now().isoformat(),
+        # "fecha": ... (REMOVED to preserve original creation date)
         "total": total_order,
         "valor_domicilio": domicilio,
         "medio_pago_id": order.medio_pago_id,
-        "estado": order.estado
+        "estado": order.estado,
+        "updated_at": datetime.now().isoformat()
     }
+    
+    # If using OrderCreate model, 'fecha' might be passed, but we ignore it for updates 
+    # as per user request "date cannot be changed".
+    
     supabase.table("pedidos").update(order_data).eq("id", order_id).execute()
 
     # 4. Replace Items (Delete All for this Order -> Insert New)

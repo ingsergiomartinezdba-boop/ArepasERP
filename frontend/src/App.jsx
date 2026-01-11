@@ -10,6 +10,7 @@ import OrdersList from './pages/OrdersList';
 import Login from './pages/Login';
 import Suppliers from './pages/Suppliers';
 import PaymentMethods from './pages/PaymentMethods';
+import OrdersReport from './pages/OrdersReport';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="orders" element={<OrdersList />} />
+            <Route path="orders/report" element={<OrdersReport />} />
             <Route path="orders/new" element={<OrderForm />} />
             <Route path="orders/:id/edit" element={<OrderForm />} />
             <Route path="whatsapp" element={<WhatsappSummary />} />

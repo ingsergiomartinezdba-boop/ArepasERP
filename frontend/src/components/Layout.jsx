@@ -45,6 +45,14 @@ export default function Layout() {
                         <span className="nav-text">Reporte WhatsApp</span>
                     </NavLink>
 
+                    <NavLink
+                        to="/orders/report"
+                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    >
+                        <FileText size={22} />
+                        <span className="nav-text">Reporte Mensual</span>
+                    </NavLink>
+
                     <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">GASTOS</div>
 
                     <NavLink
