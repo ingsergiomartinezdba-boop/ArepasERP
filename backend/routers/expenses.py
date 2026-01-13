@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List
 from ..database import supabase
 from ..models import Expense, ExpenseCreate
+from datetime import datetime
 
 router = APIRouter()
 
@@ -27,15 +28,62 @@ def get_expenses(start_date: str = None, end_date: str = None):
 
 @router.put("/{expense_id}", response_model=Expense)
 def update_expense(expense_id: int, expense: ExpenseCreate):
-    response = supabase.table("gastos").update(expense.dict()).eq("id", expense_id).execute()
+    payload = expense.dict()
+    payload['updated_at'] = datetime.now().isoformat()
+    
+    # Logic: if Paid and fecha_pago None -> Set it to NOW
+    if payload.get('medio_pago_id'):
+        if not payload.get('fecha_pago'):
+            payload['fecha_pago'] = datetime.now().isoformat()
+    else:
+        # Switched to Credit or Unpaid -> Clear payment date
+        payload['fecha_pago'] = None
+
+    # Serialize dates
+    if payload.get('fecha'): payload['fecha'] = str(payload['fecha'])
+
+    response = supabase.table("gastos").update(payload).eq("id", expense_id).execute()
     if not response.data:
          raise HTTPException(status_code=404, detail="Expense not found")
     return response.data[0]
 
 @router.post("/", response_model=Expense, status_code=status.HTTP_201_CREATED)
 def create_expense(expense: ExpenseCreate):
-    response = supabase.table("gastos").insert(expense.dict()).execute()
-    return response.data[0]
+    try:
+        # 1. Prepare Payload
+        payload = expense.dict()
+        payload['fecha'] = str(payload['fecha'])
+        
+        # Auto-set Payment Date if Paid and Missing
+        # Default to Expense Date for initial entry if not specified
+        if payload.get('medio_pago_id') and not payload.get('fecha_pago'):
+             payload['fecha_pago'] = payload['fecha'] 
+
+        # 2. Create Expense
+        response = supabase.table("gastos").insert(payload).execute()
+        if not response.data:
+             raise HTTPException(status_code=400, detail="Failed to create expense record")
+        new_expense = response.data[0]
+        
+        # 3. If Credit (No Payment Method) and has Provider -> Create Account Payable
+        if not expense.medio_pago_id and expense.proveedor_id:
+            debt_data = {
+                "proveedor_id": expense.proveedor_id,
+                "concepto": f"Gasto: {expense.concepto}",
+                "valor": expense.valor,
+                "fecha": str(expense.fecha),
+                "estado": "pendiente"
+            }
+            try:
+                print(f"Creating debt for provider {expense.proveedor_id}...")
+                supabase.table("cuentas_pagar").insert(debt_data).execute()
+            except Exception as e:
+                print(f"Error creating account payable: {e}")
+                
+        return new_expense
+    except Exception as outer_e:
+        print(f"CRITICAL ERROR in create_expense: {outer_e}")
+        raise HTTPException(status_code=500, detail=str(outer_e))
 
 @router.delete("/{expense_id}")
 def delete_expense(expense_id: int):

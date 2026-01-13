@@ -111,32 +111,68 @@ def get_whatsapp_summary(date_str: Optional[str] = None):
     else:
         target_date = date_str
 
-    # Fetch orders for the date
-    # We join with clients and order details -> products
+    # 1. Fetch orders for the target date to get the "Items of the day"
     response = supabase.table("pedidos")\
-        .select("id, total, estado, fecha, clientes(nombre), detalle_pedido(cantidad, productos(codigo_corto))")\
+        .select("id, cliente_id, total, estado, fecha, clientes(nombre), detalle_pedido(cantidad, productos(codigo_corto))")\
         .eq("estado", "pendiente")\
         .gte("fecha", f"{target_date}T00:00:00")\
         .lte("fecha", f"{target_date}T23:59:59")\
-        .order("id")\
         .execute()
     
-    # Sort by Client Name using Python since Supabase join sorting can be tricky
-    orders = sorted(response.data, key=lambda x: x['clientes']['nombre'] if x['clientes'] else "")
+    daily_orders = response.data
+    
+    # 2. Group by Client
+    client_data = {}
+    client_ids = set()
+
+    for order in daily_orders:
+        cid = order['cliente_id']
+        cname = order['clientes']['nombre'] if order['clientes'] else "Cliente"
+        client_ids.add(cid)
+
+        if cid not in client_data:
+            client_data[cid] = {
+                "name": cname,
+                "items": [],
+                "total_debt": 0
+            }
+        
+        # Add today's items
+        if order.get('detalle_pedido'):
+            for item in order['detalle_pedido']:
+                qty = item['cantidad']
+                code = item['productos']['codigo_corto'] if item['productos'] else "?"
+                client_data[cid]['items'].append(f"{qty} {code}")
+
+    # 3. Calculate Total Pending Debt for these clients
+    # Fetch ALL pending orders for these clients (Total Pendiente)
+    if client_ids:
+        debt_res = supabase.table("pedidos")\
+            .select("cliente_id, total")\
+            .in_("cliente_id", list(client_ids))\
+            .eq("estado", "pendiente")\
+            .execute()
+        
+        for debt_item in debt_res.data:
+            cid = debt_item['cliente_id']
+            if cid in client_data:
+                client_data[cid]['total_debt'] += debt_item['total']
+
+    # 4. Build Text
+    # Sort by Client Name
+    sorted_clients = sorted(client_data.values(), key=lambda x: x['name'])
 
     summary_text = ""
     summary_text += f"*PEDIDOS {target_date}*\n\n"
     
-    for order in orders:
-        client_name = order['clientes']['nombre']
-        total = order['total']
-        items = order['detalle_pedido']
+    for client in sorted_clients:
+        name = client['name']
+        debt = client['total_debt']
+        items = client['items']
         
-        summary_text += f"*{client_name}* ${total:,.0f}\n"
-        for item in items:
-            qty = item['cantidad']
-            code = item['productos']['codigo_corto'] if item['productos'] else "?"
-            summary_text += f"{qty} {code}\n"
+        summary_text += f"*{name}* ${debt:,.0f}\n"
+        for item_str in items:
+            summary_text += f"{item_str}\n"
         
         summary_text += "\n"
         

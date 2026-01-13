@@ -12,8 +12,13 @@ def get_suppliers():
 
 @router.post("/", response_model=Supplier, status_code=status.HTTP_201_CREATED)
 def create_supplier(supplier: SupplierCreate):
-    response = supabase.table("proveedores").insert(supplier.dict()).execute()
-    return response.data[0]
+    try:
+        response = supabase.table("proveedores").insert(supplier.dict()).execute()
+        return response.data[0]
+    except Exception as e:
+        print(f"Error creating supplier: {e}")
+        # Re-raise to let FastAPI handle the 500, but now it's logged
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/{supplier_id}", response_model=Supplier)
 def update_supplier(supplier_id: int, supplier: SupplierUpdate):

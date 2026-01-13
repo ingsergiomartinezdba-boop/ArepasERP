@@ -148,16 +148,64 @@ export default function OrderForm() {
                             </select>
                         </div>
 
-                        <div className="form-group mb-0" style={{ width: '150px' }}>
+                        <div className="form-group mb-0">
                             <label className="text-muted text-sm">Fecha Pedido</label>
-                            <input
-                                type="date"
-                                value={date}
-                                onChange={e => setDate(e.target.value)}
-                                className="form-control"
-                                style={{ fontWeight: 'bold' }}
-                                required
-                            />
+                            <div className="flex bg-card rounded border border-input" style={{ padding: '0.3rem' }}>
+                                {/* Day */}
+                                <select
+                                    className="bg-transparent outline-none text-center"
+                                    style={{ fontWeight: 'bold' }}
+                                    value={date.split('-')[2]}
+                                    onChange={e => {
+                                        const [y, m, d] = date.split('-');
+                                        setDate(`${y}-${m}-${e.target.value}`);
+                                    }}
+                                >
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => {
+                                        const val = d.toString().padStart(2, '0');
+                                        return <option key={d} value={val}>{val}</option>
+                                    })}
+                                </select>
+                                <span className="text-muted mx-1">/</span>
+                                {/* Month */}
+                                <select
+                                    className="bg-transparent outline-none"
+                                    style={{ fontWeight: 'bold' }}
+                                    value={date.split('-')[1]}
+                                    onChange={e => {
+                                        const [y, m, d] = date.split('-');
+                                        setDate(`${y}-${e.target.value}-${d}`);
+                                    }}
+                                >
+                                    <option value="01">Ene</option>
+                                    <option value="02">Feb</option>
+                                    <option value="03">Mar</option>
+                                    <option value="04">Abr</option>
+                                    <option value="05">May</option>
+                                    <option value="06">Jun</option>
+                                    <option value="07">Jul</option>
+                                    <option value="08">Ago</option>
+                                    <option value="09">Sep</option>
+                                    <option value="10">Oct</option>
+                                    <option value="11">Nov</option>
+                                    <option value="12">Dic</option>
+                                </select>
+                                <span className="text-muted mx-1">/</span>
+                                {/* Year */}
+                                <select
+                                    className="bg-transparent outline-none"
+                                    style={{ fontWeight: 'bold' }}
+                                    value={date.split('-')[0]}
+                                    onChange={e => {
+                                        const [y, m, d] = date.split('-');
+                                        setDate(`${e.target.value}-${m}-${d}`);
+                                    }}
+                                >
+                                    {[2024, 2025, 2026, 2027, 2028].map(y => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -249,10 +297,19 @@ export default function OrderForm() {
                             <input
                                 type="number"
                                 value={deliveryFee}
-                                onChange={e => setDeliveryFee(e.target.value)}
+                                onChange={e => {
+                                    const raw = e.target.value;
+                                    if (raw === '') { setDeliveryFee(''); return; }
+                                    let val = parseInt(raw);
+                                    if (isNaN(val)) val = 0;
+                                    if (val < 0) val = 0;
+                                    if (val > 10000) val = 10000;
+                                    setDeliveryFee(val);
+                                }}
                                 className="form-control form-control-sm"
                                 style={{ width: '100px', fontWeight: 'bold' }}
-                                min="0" step="500"
+                                min="0"
+                                max="10000"
                             />
                         </div>
                     </div>

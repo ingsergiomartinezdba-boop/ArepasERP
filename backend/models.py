@@ -16,6 +16,7 @@ class SupplierBase(BaseModel):
     telefono: Optional[str] = None
     email: Optional[str] = None
     direccion: Optional[str] = None
+    tipo_insumo: Optional[str] = None
     activo: Optional[bool] = True
 
 class SupplierCreate(SupplierBase):
@@ -138,6 +139,7 @@ class ExpenseBase(BaseModel):
     medio_pago_id: Optional[int] = None
     pedido_id: Optional[int] = None
     observaciones: Optional[str] = None
+    fecha_pago: Optional[datetime] = None
 
 class ExpenseCreate(ExpenseBase):
     pass
@@ -145,6 +147,7 @@ class ExpenseCreate(ExpenseBase):
 class Expense(ExpenseBase):
     id: int
     created_at: datetime
+    updated_at: Optional[datetime] = None
     proveedor_nombre: Optional[str] = None
 
     class Config:

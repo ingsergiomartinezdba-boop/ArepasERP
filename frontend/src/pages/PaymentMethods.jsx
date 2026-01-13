@@ -71,13 +71,14 @@ export default function PaymentMethods() {
                 <h1>Medios de Pago</h1>
                 <button
                     className="btn btn-primary"
+                    style={{ width: 'auto', padding: '0.6rem' }}
                     onClick={() => {
                         setEditingMethod(null);
                         setFormData({ nombre: '', tipo: 'digital', activo: true });
                         setIsFormOpen(true);
                     }}
                 >
-                    <Plus size={18} /> Nuevo
+                    <Plus size={24} />
                 </button>
             </div>
 

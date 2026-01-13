@@ -74,7 +74,7 @@ export default function Dashboard() {
             {/* Headers and Widgets code ... keep same structure until Cuentas por Cobrar */}
             <header className="flex justify-between items-center mb-4">
                 <h1>Dashboard</h1>
-                <span className="text-muted">{new Date().toLocaleDateString('es-CO')}</span>
+                <span className="text-muted">{new Date().toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
             </header>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '1rem' }}>
@@ -177,7 +177,7 @@ export default function Dashboard() {
                                             {client.items.map((item, idx) => (
                                                 <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                                     <td style={{ padding: '0.5rem 0', color: 'var(--text-muted)' }}>
-                                                        Vence: {new Date(item.fecha_vencimiento).toLocaleDateString('es-CO')}
+                                                        Vence: {new Date(item.fecha_vencimiento).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                                     </td>
                                                     <td style={{ padding: '0.5rem 0', textAlign: 'right' }}>
                                                         {formatCurrency(item.saldo)}

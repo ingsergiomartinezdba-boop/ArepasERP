@@ -146,7 +146,7 @@ export default function OrdersList() {
                                                     <Edit size={12} style={{ marginRight: '4px' }} /> Editar
                                                 </button>
                                             </div>
-                                            <small className="text-muted">{new Date(order.fecha).toLocaleTimeString().slice(0, 5)}</small>
+                                            {/* Time removed as it is not captured in OrderForm */}
                                         </div>
                                     </div>
                                 ))}

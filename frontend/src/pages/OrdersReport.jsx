@@ -60,7 +60,9 @@ export default function OrdersReport() {
                 start_date: startStr,
                 end_date: endStr
             });
-            setOrders(res.data);
+            // Sort by ID ASC (Oldest first)
+            const sortedOrders = res.data.sort((a, b) => a.id - b.id);
+            setOrders(sortedOrders);
         } catch (error) {
             console.error(error);
         } finally {
@@ -87,7 +89,7 @@ export default function OrdersReport() {
             const pendingOrders = res.data;
             pendingOrders.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
             const clientName = clients.find(c => c.id === parseInt(selectedClientId))?.nombre || "Cliente";
-            const dateGen = new Date().toLocaleDateString('es-CO');
+            const dateGen = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
             const totalDebt = pendingOrders.reduce((acc, o) => acc + o.total, 0);
 
             // Open Print Window
@@ -134,7 +136,7 @@ export default function OrdersReport() {
                         <tbody>
                             ${pendingOrders.map(o => `
                                 <tr>
-                                    <td style="white-space: nowrap;">${new Date(o.fecha).toLocaleDateString('es-CO')}</td>
+                                    <td style="white-space: nowrap;">${new Date(o.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
                                     <td>
                                         <ul style="list-style-type: none; padding: 0; margin: 0;">
                                             ${o.items.map(i => `
@@ -175,7 +177,7 @@ export default function OrdersReport() {
     };
 
     const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
-    const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('es-CO');
+    const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     // Calculations
     const totalSales = orders.filter(o => o.estado !== 'cancelado').reduce((acc, curr) => acc + curr.total, 0);
@@ -185,13 +187,37 @@ export default function OrdersReport() {
             <div className="page-header flex justify-between items-center mb-4">
                 <h1>Reporte Mensual Pedidos</h1>
                 <div className="flex gap-2 items-center">
-                    <input
-                        type="month"
-                        value={month}
-                        onChange={e => setMonth(e.target.value)}
-                        className="form-control"
-                        style={{ width: 'auto' }}
-                    />
+                    <div className="flex gap-1 bg-card rounded border p-1 border-input">
+                        {/* Month Select */}
+                        <select
+                            className="bg-transparent text-sm outline-none px-2 py-1"
+                            value={month.split('-')[1]}
+                            onChange={e => setMonth(`${month.split('-')[0]}-${e.target.value}`)}
+                        >
+                            <option value="01">Enero</option>
+                            <option value="02">Febrero</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Mayo</option>
+                            <option value="06">Junio</option>
+                            <option value="07">Julio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                        {/* Year Select - Range: 2024-2030 */}
+                        <select
+                            className="bg-transparent text-sm outline-none px-2 py-1 border-l border-input"
+                            value={month.split('-')[0]}
+                            onChange={e => setMonth(`${e.target.value}-${month.split('-')[1]}`)}
+                        >
+                            {[2024, 2025, 2026, 2027, 2028].map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
 
