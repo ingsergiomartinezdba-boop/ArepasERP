@@ -19,6 +19,7 @@ export default function OrderForm() {
     const [searchTerm, setSearchTerm] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [status, setStatus] = useState('pendiente'); // For editing
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
     useEffect(() => {
         loadData();
@@ -40,6 +41,7 @@ export default function OrderForm() {
                 setSelectedClient(order.cliente_id);
                 setDeliveryFee(order.valor_domicilio || 0);
                 setStatus(order.estado);
+                if (order.fecha) setDate(order.fecha.split('T')[0]);
 
                 const qtyMap = {};
                 order.items.forEach(item => {
@@ -88,7 +90,8 @@ export default function OrderForm() {
                 cliente_id: parseInt(selectedClient),
                 items: items,
                 valor_domicilio: parseFloat(deliveryFee) || 0,
-                estado: status // Preserve or update status
+                estado: status,
+                fecha: date // Add date to payload
             };
 
             if (isEditing) {
@@ -96,7 +99,7 @@ export default function OrderForm() {
             } else {
                 await ordersService.create(payload);
             }
-            navigate('/');
+            navigate('/orders'); // Redirect to orders list instead of root
         } catch (err) {
             alert("Error al guardar pedido");
             console.error(err);
@@ -142,6 +145,18 @@ export default function OrderForm() {
                                 <option key={c.id} value={c.id}>{c.nombre}</option>
                             ))}
                         </select>
+                    </div>
+
+                    <div className="form-group mb-0 mt-2">
+                        <label className="text-muted text-sm">Fecha Pedido</label>
+                        <input
+                            type="date"
+                            value={date}
+                            onChange={e => setDate(e.target.value)}
+                            className="form-control"
+                            style={{ fontWeight: 'bold' }}
+                            required
+                        />
                     </div>
 
                     {isEditing && (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ordersService, paymentMethodsService } from '../services/api';
-import { Calendar, Search, Filter, Eye } from 'lucide-react';
+import { ordersService, paymentMethodsService, clientsService } from '../services/api';
+import { Calendar, Search, Filter, Eye, FileText } from 'lucide-react';
 
 export default function OrdersReport() {
     const [orders, setOrders] = useState([]);
@@ -12,13 +12,26 @@ export default function OrdersReport() {
     const [paymentMethods, setPaymentMethods] = useState({});
     const [selectedOrder, setSelectedOrder] = useState(null);
 
+    // PDF Generation State
+    const [clients, setClients] = useState([]);
+    const [selectedClientId, setSelectedClientId] = useState('');
+    const [generatingPdf, setGeneratingPdf] = useState(false);
+
     useEffect(() => {
         loadPaymentMethods();
+        loadClients();
     }, []);
 
     useEffect(() => {
         loadOrders();
     }, [month]);
+
+    const loadClients = async () => {
+        try {
+            const res = await clientsService.getAll();
+            setClients(res.data);
+        } catch (e) { console.error(e); }
+    };
 
     const loadPaymentMethods = async () => {
         try {
@@ -55,6 +68,103 @@ export default function OrdersReport() {
         }
     };
 
+    const handleGeneratePDF = async () => {
+        if (!selectedClientId) {
+            alert("Seleccione un cliente");
+            return;
+        }
+
+        setGeneratingPdf(true);
+        try {
+            // Fetch PENDING orders for this client. 
+            // Note: We might want ANY unpaid order, so 'pendiente'. 
+            // User asked for "cuentas por pagar".
+            const res = await ordersService.getAll({
+                client_id: selectedClientId,
+                status: 'pendiente'
+            });
+
+            const pendingOrders = res.data;
+            const clientName = clients.find(c => c.id === parseInt(selectedClientId))?.nombre || "Cliente";
+            const dateGen = new Date().toLocaleDateString();
+            const totalDebt = pendingOrders.reduce((acc, o) => acc + o.total, 0);
+
+            // Open Print Window
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            if (!printWindow) {
+                alert("Permita ventanas emergentes para generar el reporte.");
+                setGeneratingPdf(false);
+                return;
+            }
+
+            const htmlContent = `
+                <html>
+                <head>
+                    <title>Estado de Cuenta - ${clientName}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        h1 { text-align: center; color: #333; margin-bottom: 5px; }
+                        .header { margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                        .text-right { text-align: right; }
+                        .total-row { font-weight: bold; background-color: #eee; }
+                        .footer { margin-top: 30px; text-align: center; font-size: 0.8rem; color: #666; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>Estado de Cuenta</h1>
+                        <p><strong>Cliente:</strong> ${clientName}</p>
+                        <p><strong>Fecha Generación:</strong> ${dateGen}</p>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha Pedido</th>
+                                <th>ID Pedido</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pendingOrders.map(o => `
+                                <tr>
+                                    <td>${new Date(o.fecha).toLocaleDateString()}</td>
+                                    <td>#${o.id}</td>
+                                    <td class="text-right">$${new Intl.NumberFormat('es-CO').format(o.total)}</td>
+                                </tr>
+                            `).join('')}
+                            <tr class="total-row">
+                                <td colspan="2" class="text-right">TOTAL A PAGAR</td>
+                                <td class="text-right">$${new Intl.NumberFormat('es-CO').format(totalDebt)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="footer">
+                        <p>Arepas Betania ERP</p>
+                    </div>
+                    
+                    <script>
+                        window.onload = function() { window.print(); }
+                    </script>
+                </body>
+                </html>
+            `;
+
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+
+        } catch (e) {
+            console.error(e);
+            alert("Error generando reporte");
+        } finally {
+            setGeneratingPdf(false);
+        }
+    };
+
     const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
     const formatDate = (dateStr) => new Date(dateStr).toLocaleString();
 
@@ -73,6 +183,34 @@ export default function OrdersReport() {
                         className="form-control"
                         style={{ width: 'auto' }}
                     />
+                </div>
+            </div>
+
+            {/* Generate Account Statement Section */}
+            <div className="card mb-4 border-l-4" style={{ borderLeft: '4px solid var(--primary)' }}>
+                <h3 className="mb-3 flex items-center gap-2"><FileText size={20} /> Generar Estado de Cuenta (PDF)</h3>
+                <div className="flex gap-4 items-end">
+                    <div className="form-group mb-0" style={{ flex: 1, maxWidth: '300px' }}>
+                        <label>Seleccionar Cliente</label>
+                        <select
+                            className="form-control"
+                            value={selectedClientId}
+                            onChange={e => setSelectedClientId(e.target.value)}
+                        >
+                            <option value="">-- Cliente --</option>
+                            {clients.map(c => (
+                                <option key={c.id} value={c.id}>{c.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <button
+                        onClick={handleGeneratePDF}
+                        disabled={generatingPdf || !selectedClientId}
+                        className="btn btn-primary"
+                        style={{ width: 'auto' }}
+                    >
+                        {generatingPdf ? 'Generando...' : 'Generar PDF'}
+                    </button>
                 </div>
             </div>
 

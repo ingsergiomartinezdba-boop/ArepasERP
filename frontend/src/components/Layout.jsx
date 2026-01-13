@@ -26,7 +26,7 @@ export default function Layout() {
                         className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     >
                         <List size={22} />
-                        <span className="nav-text">Listado</span>
+                        <span className="nav-text">Pedidos del Día</span>
                     </NavLink>
 
                     <NavLink
@@ -37,13 +37,7 @@ export default function Layout() {
                         <span className="nav-text">Nuevo Pedido</span>
                     </NavLink>
 
-                    <NavLink
-                        to="/whatsapp"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <MessageCircle size={22} />
-                        <span className="nav-text">Reporte WhatsApp</span>
-                    </NavLink>
+
 
                     <NavLink
                         to="/orders/report"
@@ -56,11 +50,19 @@ export default function Layout() {
                     <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">GASTOS</div>
 
                     <NavLink
+                        to="/expenses/new"
+                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    >
+                        <PlusCircle size={22} />
+                        <span className="nav-text">Nuevo Gasto</span>
+                    </NavLink>
+
+                    <NavLink
                         to="/expenses"
                         className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     >
                         <BarChart2 size={22} />
-                        <span className="nav-text">Gastos</span>
+                        <span className="nav-text">Reporte Gastos</span>
                     </NavLink>
 
                     <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">CONFIGURACIÓN</div>

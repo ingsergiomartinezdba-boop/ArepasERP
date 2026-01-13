@@ -77,43 +77,49 @@ export default function Dashboard() {
                 <span className="text-muted">{new Date().toLocaleDateString()}</span>
             </header>
 
-            {/* Monthly Stats */}
-            <h2 className="text-lg mb-2">Este Mes</h2>
-            <div className="stats-grid mb-4">
-                <div className="card">
-                    <div className="flex items-center gap-2 mb-2 text-muted">
-                        <TrendingUp size={16} className="text-success" />
-                        <small>Ventas Mes</small>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '1rem' }}>
+                {/* Monthly Stats */}
+                <div style={{ flex: '1 1 300px' }}>
+                    <h2 className="text-lg mb-2">Este Mes</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="card" style={{ marginBottom: 0 }}>
+                            <div className="flex items-center gap-2 mb-2 text-muted">
+                                <TrendingUp size={16} className="text-success" />
+                                <small>Ventas Mes</small>
+                            </div>
+                            <h3>{formatCurrency(ventasMes)}</h3>
+                        </div>
+
+                        <div className="card" style={{ marginBottom: 0 }}>
+                            <div className="flex items-center gap-2 mb-2 text-muted">
+                                <TrendingDown size={16} className="text-danger" />
+                                <small>Gastos Mes</small>
+                            </div>
+                            <h3>{formatCurrency(gastosMes)}</h3>
+                        </div>
                     </div>
-                    <h3>{formatCurrency(ventasMes)}</h3>
                 </div>
 
-                <div className="card">
-                    <div className="flex items-center gap-2 mb-2 text-muted">
-                        <TrendingDown size={16} className="text-danger" />
-                        <small>Gastos Mes</small>
-                    </div>
-                    <h3>{formatCurrency(gastosMes)}</h3>
-                </div>
-            </div>
+                {/* Daily Stats */}
+                <div style={{ flex: '1 1 300px' }}>
+                    <h2 className="text-lg mb-2">Hoy</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="card" style={{ marginBottom: 0 }}>
+                            <div className="flex items-center gap-2 mb-2 text-muted">
+                                <DollarSign size={16} />
+                                <small>Ventas Hoy</small>
+                            </div>
+                            <h3>{formatCurrency(ventasHoy)}</h3>
+                        </div>
 
-            {/* Daily Stats */}
-            <h2 className="text-lg mb-2">Hoy</h2>
-            <div className="stats-grid mb-4">
-                <div className="card">
-                    <div className="flex items-center gap-2 mb-2 text-muted">
-                        <DollarSign size={16} />
-                        <small>Ventas Hoy</small>
+                        <div className="card" style={{ marginBottom: 0 }}>
+                            <div className="flex items-center gap-2 mb-2 text-muted">
+                                <AlertCircle size={16} />
+                                <small>Gastos Hoy</small>
+                            </div>
+                            <h3>{formatCurrency(gastosHoy)}</h3>
+                        </div>
                     </div>
-                    <h3>{formatCurrency(ventasHoy)}</h3>
-                </div>
-
-                <div className="card">
-                    <div className="flex items-center gap-2 mb-2 text-muted">
-                        <AlertCircle size={16} />
-                        <small>Gastos Hoy</small>
-                    </div>
-                    <h3>{formatCurrency(gastosHoy)}</h3>
                 </div>
             </div>
 

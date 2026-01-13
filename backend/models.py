@@ -10,6 +10,27 @@ class Token(BaseModel):
 
 # --- Client Models ---
 
+class SupplierBase(BaseModel):
+    nombre: str
+    contacto: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    direccion: Optional[str] = None
+    activo: Optional[bool] = True
+
+class SupplierCreate(SupplierBase):
+    pass
+
+class SupplierUpdate(SupplierBase):
+    pass
+
+class Supplier(SupplierBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class ClientBase(BaseModel):
     nombre: str
     tipo_cliente: str # mayorista, minorista, local, distribuidor
@@ -124,6 +145,10 @@ class ExpenseCreate(ExpenseBase):
 class Expense(ExpenseBase):
     id: int
     created_at: datetime
+    proveedor_nombre: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 # --- Payment Method Models ---
 

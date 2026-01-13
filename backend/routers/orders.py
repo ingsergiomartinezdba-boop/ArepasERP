@@ -102,19 +102,25 @@ def create_order(order: OrderCreate):
     )
 
 @router.get("/", response_model=List[OrderResponse])
-def get_orders(start_date: str = None, end_date: str = None):
+def get_orders(start_date: str = None, end_date: str = None, client_id: int = None, status: str = None):
     # Fetch orders with items
     # Supabase join syntax: select("*, detalle_pedido(*, productos(nombre))")
     query = supabase.table("pedidos").select("*, clientes(nombre), detalle_pedido(id, producto_id, cantidad, precio_aplicado, subtotal, productos(nombre))").order("fecha", desc=True)
     
     if start_date and end_date:
-        # Full day coverage usually implies adding time to end_date if it's just YYYY-MM-DD
-        # But we'll assume caller handles it or we do simple string compare
         if len(end_date) == 10: # YYYY-MM-DD
              end_date += "T23:59:59"
         query = query.gte("fecha", start_date).lte("fecha", end_date)
     else:
-        query = query.limit(50)
+        # If no date range, and no other filters, limit. But if Client ID provided, maybe don't limit?
+        if not client_id:
+            query = query.limit(50)
+
+    if client_id:
+        query = query.eq("cliente_id", client_id)
+    
+    if status:
+        query = query.eq("estado", status)
         
     response = query.execute()
     
@@ -222,7 +228,7 @@ def update_order(order_id: int, order: OrderCreate):
     # Add updated_at timestamp.
     order_data = {
         "cliente_id": order.cliente_id,
-        # "fecha": ... (REMOVED to preserve original creation date)
+        "fecha": order.fecha.isoformat() if order.fecha else datetime.now().isoformat(), 
         "total": total_order,
         "valor_domicilio": domicilio,
         "medio_pago_id": order.medio_pago_id,
@@ -242,15 +248,39 @@ def update_order(order_id: int, order: OrderCreate):
         supabase.table("detalle_pedido").insert(order_items_data).execute()
 
     # 5. Update Accounts Receivable (Cuentas por Cobrar)
-    # Find associated AR record
+    # 5. Sync Accounts Receivable (Cuentas por Cobrar)
     ar_res = supabase.table("cuentas_cobrar").select("*").eq("pedido_id", order_id).execute()
-    if ar_res.data:
-        ar_id = ar_res.data[0]['id']
-        current_paid = ar_res.data[0]['valor_pagado'] or 0
-        # Update valur_total. Logic for 'saldo' is generated always generated column in DB? 
-        # Checking schema... yes: saldo DECIMAL GENERATED ALWAYS AS (valor_total - valor_pagado) STORED
-        # So we only update valor_total.
-        supabase.table("cuentas_cobrar").update({"valor_total": total_order}).eq("id", ar_id).execute()
+    existing_ar = ar_res.data[0] if ar_res.data else None
+    
+    if order.estado == 'cancelado':
+        if existing_ar:
+            supabase.table("cuentas_cobrar").delete().eq("id", existing_ar['id']).execute()
+            
+    elif order.estado == 'pagado':
+        if existing_ar:
+             supabase.table("cuentas_cobrar").update({
+                 "valor_total": total_order,
+                 "valor_pagado": total_order,
+                 "estado": "pagado"
+             }).eq("id", existing_ar['id']).execute()
+             
+    else: # Pendiente
+        if existing_ar:
+            supabase.table("cuentas_cobrar").update({
+                "valor_total": total_order,
+                "estado": "pendiente"
+            }).eq("id", existing_ar['id']).execute()
+        else:
+            # Create new if missing
+            cuenta_data = {
+                "cliente_id": order.cliente_id,
+                "pedido_id": order_id,
+                "valor_total": total_order,
+                "valor_pagado": 0,
+                "fecha_vencimiento": datetime.now().isoformat(),
+                "estado": "pendiente"
+            }
+            supabase.table("cuentas_cobrar").insert(cuenta_data).execute()
 
     # 6. Return Updated Order (Reuse get_order logic or construct)
     return get_order(order_id)
@@ -292,15 +322,28 @@ def patch_order_status(order_id: int, status_update: OrderStatusUpdate):
              "estado": "pagado"
          }).eq("pedido_id", order_id).execute()
     elif status_update.estado == 'pendiente':
-        # Revert to unpaid
-         supabase.table("cuentas_cobrar").update({
-             "valor_pagado": 0,
-             "estado": "pendiente"
-         }).eq("pedido_id", order_id).execute()
+        # Check if exists first
+        ar_res = supabase.table("cuentas_cobrar").select("*").eq("pedido_id", order_id).execute()
+        if ar_res.data:
+            # Update existing
+             supabase.table("cuentas_cobrar").update({
+                 "valor_pagado": 0,
+                 "estado": "pendiente"
+             }).eq("pedido_id", order_id).execute()
+        else:
+             # Create new if missing (restore debt)
+             cuenta_data = {
+                "cliente_id": order['cliente_id'],
+                "pedido_id": order_id,
+                "valor_total": order['total'],
+                "valor_pagado": 0,
+                "fecha_vencimiento": datetime.now().isoformat(),
+                "estado": "pendiente"
+            }
+             supabase.table("cuentas_cobrar").insert(cuenta_data).execute()
+
     elif status_update.estado == 'cancelado':
         # Void the debt (delete accounts receivable record)
-        # Note: If we want to keep history of cancelled invoices, we'd need to update schema to allow 'cancelado' in cuentas_cobrar.estado
-        # But schema has constraint. Deleting is cleanest for now to remove from "Debtors" list.
         supabase.table("cuentas_cobrar").delete().eq("pedido_id", order_id).execute()
 
     return {"message": "Status updated"}

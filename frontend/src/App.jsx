@@ -5,6 +5,7 @@ import OrderForm from './pages/OrderForm';
 import WhatsappSummary from './pages/WhatsappSummary';
 import Clients from './pages/Clients';
 import Expenses from './pages/Expenses';
+import ExpenseForm from './pages/ExpenseForm';
 import Products from './pages/Products';
 import OrdersList from './pages/OrdersList';
 import Login from './pages/Login';
@@ -30,6 +31,7 @@ function App() {
             <Route path="clients" element={<Clients />} />
             <Route path="suppliers" element={<Suppliers />} />
             <Route path="expenses" element={<Expenses />} />
+            <Route path="expenses/new" element={<ExpenseForm />} />
             <Route path="products" element={<Products />} />
             <Route path="payment-methods" element={<PaymentMethods />} />
           </Route>

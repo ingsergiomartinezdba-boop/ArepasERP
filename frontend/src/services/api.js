@@ -32,9 +32,17 @@ export const ordersService = {
 };
 
 export const expensesService = {
-    getAll: () => api.get('/expenses/'),
+    getAll: (params) => api.get('/expenses/', { params }),
     create: (data) => api.post('/expenses/', data),
+    update: (id, data) => api.put(`/expenses/${id}`, data),
     delete: (id) => api.delete(`/expenses/${id}`),
+};
+
+export const suppliersService = {
+    getAll: () => api.get('/suppliers/'),
+    create: (data) => api.post('/suppliers/', data),
+    update: (id, data) => api.put(`/suppliers/${id}`, data),
+    delete: (id) => api.delete(`/suppliers/${id}`),
 };
 
 export const reportsService = {
