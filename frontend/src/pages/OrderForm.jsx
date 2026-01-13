@@ -131,32 +131,34 @@ export default function OrderForm() {
 
             <form onSubmit={handleSubmit}>
                 <div className="card mb-4 sticky-top-mobile" style={{ zIndex: 10, borderBottom: '2px solid var(--primary)' }}>
-                    <div className="form-group mb-0">
-                        <label className="text-muted text-sm">Cliente</label>
-                        <select
-                            value={selectedClient}
-                            onChange={e => setSelectedClient(e.target.value)}
-                            required
-                            className="form-control-lg"
-                            style={{ fontWeight: 'bold' }}
-                        >
-                            <option value="">Seleccionar Cliente...</option>
-                            {clients.map(c => (
-                                <option key={c.id} value={c.id}>{c.nombre}</option>
-                            ))}
-                        </select>
-                    </div>
+                    <div className="flex gap-4 mb-2">
+                        <div className="form-group mb-0" style={{ flex: 1 }}>
+                            <label className="text-muted text-sm">Cliente</label>
+                            <select
+                                value={selectedClient}
+                                onChange={e => setSelectedClient(e.target.value)}
+                                required
+                                className="form-control-lg"
+                                style={{ fontWeight: 'bold' }}
+                            >
+                                <option value="">Seleccionar Cliente...</option>
+                                {clients.map(c => (
+                                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
 
-                    <div className="form-group mb-0 mt-2">
-                        <label className="text-muted text-sm">Fecha Pedido</label>
-                        <input
-                            type="date"
-                            value={date}
-                            onChange={e => setDate(e.target.value)}
-                            className="form-control"
-                            style={{ fontWeight: 'bold' }}
-                            required
-                        />
+                        <div className="form-group mb-0" style={{ width: '150px' }}>
+                            <label className="text-muted text-sm">Fecha Pedido</label>
+                            <input
+                                type="date"
+                                value={date}
+                                onChange={e => setDate(e.target.value)}
+                                className="form-control"
+                                style={{ fontWeight: 'bold' }}
+                                required
+                            />
+                        </div>
                     </div>
 
                     {isEditing && (

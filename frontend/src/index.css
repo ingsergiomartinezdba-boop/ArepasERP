@@ -68,6 +68,12 @@ a {
   position: relative;
 }
 
+@media (max-width: 768px) {
+  .main-content {
+    padding: 0.75rem;
+  }
+}
+
 .container {
   max-width: 1000px;
   margin: 0 auto;
@@ -363,4 +369,20 @@ select option {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1rem;
+}
+
+/* Custom grid for Orders Report to handle Sidebar offset on smaller screens */
+.orders-report-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  /* Default Mobile: Stacked */
+  gap: 0.75rem;
+}
+
+@media (min-width: 550px) {
+
+  /* Desktop/Tablet (allowing for Sidebar): Force 3 columns */
+  .orders-report-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }

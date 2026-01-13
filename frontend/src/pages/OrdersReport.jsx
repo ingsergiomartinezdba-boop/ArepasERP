@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ordersService, paymentMethodsService, clientsService } from '../services/api';
-import { Calendar, Search, Filter, Eye, FileText } from 'lucide-react';
+import { Calendar, Search, Filter, Eye, FileText, TrendingUp, ShoppingBag } from 'lucide-react';
 
 export default function OrdersReport() {
     const [orders, setOrders] = useState([]);
@@ -85,8 +85,9 @@ export default function OrdersReport() {
             });
 
             const pendingOrders = res.data;
+            pendingOrders.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
             const clientName = clients.find(c => c.id === parseInt(selectedClientId))?.nombre || "Cliente";
-            const dateGen = new Date().toLocaleDateString();
+            const dateGen = new Date().toLocaleDateString('es-CO');
             const totalDebt = pendingOrders.reduce((acc, o) => acc + o.total, 0);
 
             // Open Print Window
@@ -106,11 +107,13 @@ export default function OrdersReport() {
                         h1 { text-align: center; color: #333; margin-bottom: 5px; }
                         .header { margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
                         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
                         th { background-color: #f2f2f2; }
                         .text-right { text-align: right; }
                         .total-row { font-weight: bold; background-color: #eee; }
                         .footer { margin-top: 30px; text-align: center; font-size: 0.8rem; color: #666; }
+                        ul { margin: 0; padding-left: 20px; }
+                        li { margin-bottom: 2px; }
                     </style>
                 </head>
                 <body>
@@ -124,15 +127,21 @@ export default function OrdersReport() {
                         <thead>
                             <tr>
                                 <th>Fecha Pedido</th>
-                                <th>ID Pedido</th>
+                                <th>Detalle Producto</th>
                                 <th class="text-right">Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${pendingOrders.map(o => `
                                 <tr>
-                                    <td>${new Date(o.fecha).toLocaleDateString()}</td>
-                                    <td>#${o.id}</td>
+                                    <td style="white-space: nowrap;">${new Date(o.fecha).toLocaleDateString('es-CO')}</td>
+                                    <td>
+                                        <ul style="list-style-type: none; padding: 0; margin: 0;">
+                                            ${o.items.map(i => `
+                                                <li>${i.producto_nombre} <strong>x${i.cantidad}</strong></li>
+                                            `).join('')}
+                                        </ul>
+                                    </td>
                                     <td class="text-right">$${new Intl.NumberFormat('es-CO').format(o.total)}</td>
                                 </tr>
                             `).join('')}
@@ -166,7 +175,7 @@ export default function OrdersReport() {
     };
 
     const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
-    const formatDate = (dateStr) => new Date(dateStr).toLocaleString();
+    const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('es-CO');
 
     // Calculations
     const totalSales = orders.filter(o => o.estado !== 'cancelado').reduce((acc, curr) => acc + curr.total, 0);
@@ -186,42 +195,50 @@ export default function OrdersReport() {
                 </div>
             </div>
 
-            {/* Generate Account Statement Section */}
-            <div className="card mb-4 border-l-4" style={{ borderLeft: '4px solid var(--primary)' }}>
-                <h3 className="mb-3 flex items-center gap-2"><FileText size={20} /> Generar Estado de Cuenta (PDF)</h3>
-                <div className="flex gap-4 items-end">
-                    <div className="form-group mb-0" style={{ flex: 1, maxWidth: '300px' }}>
-                        <label>Seleccionar Cliente</label>
+            <div className="orders-report-grid mb-4">
+                {/* Widget 1: Total Sales */}
+                <div className="card p-3 min-[550px]:p-2 mb-0 h-full flex flex-col justify-between" style={{ minWidth: 0, overflow: 'hidden' }}>
+                    <div className="flex items-center gap-1 text-muted text-sm min-[550px]:text-[0.7rem] mb-1">
+                        <TrendingUp className="w-4 h-4 min-[550px]:w-3 min-[550px]:h-3 text-success" /> Ventas Mes
+                    </div>
+                    <div className="text-2xl min-[550px]:text-lg font-bold truncate" title={formatCurrency(totalSales)}>{formatCurrency(totalSales)}</div>
+                </div>
+
+                {/* Widget 2: Total Orders */}
+                <div className="card p-3 min-[550px]:p-2 mb-0 h-full flex flex-col justify-between" style={{ minWidth: 0, overflow: 'hidden' }}>
+                    <div className="flex items-center gap-1 text-muted text-sm min-[550px]:text-[0.7rem] mb-1">
+                        <ShoppingBag className="w-4 h-4 min-[550px]:w-3 min-[550px]:h-3 text-primary" /> Pedidos Totales
+                    </div>
+                    <div className="text-2xl min-[550px]:text-lg font-bold truncate">{orders.length}</div>
+                </div>
+
+                {/* Widget 3: PDF Generator */}
+                <div className="card p-3 min-[550px]:p-2 mb-0 h-full flex flex-col justify-between" style={{ minWidth: 0, overflow: 'hidden' }}>
+                    <div className="flex items-center gap-1 text-muted text-sm min-[550px]:text-[0.7rem] mb-1">
+                        <FileText className="w-4 h-4 min-[550px]:w-3 min-[550px]:h-3" /> Generar Estado de Cuenta
+                    </div>
+                    <div className="flex gap-2 min-[550px]:gap-1 w-full items-center">
                         <select
-                            className="form-control"
+                            className="form-control h-9 min-[550px]:h-6 text-sm min-[550px]:text-[0.7rem] px-2 min-[550px]:px-1"
                             value={selectedClientId}
                             onChange={e => setSelectedClientId(e.target.value)}
+                            style={{ flex: 1, minWidth: 0 }}
                         >
-                            <option value="">-- Cliente --</option>
+                            <option value="">Cliente...</option>
                             {clients.map(c => (
                                 <option key={c.id} value={c.id}>{c.nombre}</option>
                             ))}
                         </select>
+                        <button
+                            onClick={handleGeneratePDF}
+                            disabled={generatingPdf || !selectedClientId}
+                            className="btn btn-primary h-9 min-[550px]:h-6 text-sm min-[550px]:text-[0.7rem] px-3 min-[550px]:px-2"
+                            style={{ width: 'auto', minWidth: 0 }}
+                            title="Generar PDF"
+                        >
+                            PDF
+                        </button>
                     </div>
-                    <button
-                        onClick={handleGeneratePDF}
-                        disabled={generatingPdf || !selectedClientId}
-                        className="btn btn-primary"
-                        style={{ width: 'auto' }}
-                    >
-                        {generatingPdf ? 'Generando...' : 'Generar PDF'}
-                    </button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="card">
-                    <h3 className="text-muted text-sm">Total Ventas (Mes)</h3>
-                    <div className="text-2xl font-bold text-success">{formatCurrency(totalSales)}</div>
-                </div>
-                <div className="card">
-                    <h3 className="text-muted text-sm">Pedidos Totales</h3>
-                    <div className="text-2xl font-bold">{orders.length}</div>
                 </div>
             </div>
 

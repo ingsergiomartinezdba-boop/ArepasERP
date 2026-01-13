@@ -158,7 +158,7 @@ export default function Expenses() {
                                             <Tag size={12} /> {expense.categoria.replace('_', ' ')}
                                         </span>
                                         <span className="flex items-center gap-1">
-                                            <Calendar size={12} /> {new Date(expense.fecha).toLocaleDateString()}
+                                            <Calendar size={12} /> {new Date(expense.fecha).toLocaleDateString('es-CO')}
                                         </span>
                                         {expense.proveedor_nombre && (
                                             <span className="flex items-center gap-1 text-primary">
