@@ -60,6 +60,7 @@ export const paymentMethodsService = {
 export const transfersService = {
     getAll: () => api.get('/transfers/'),
     create: (data) => api.post('/transfers/', data),
+    getBalances: () => api.get('/transfers/balances'),
 };
 
 export default api;

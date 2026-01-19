@@ -63,36 +63,21 @@ def get_dashboard_stats():
 
     # 6. Cash Flow by Payment Method (Flujo de Caja)
     # Fetch Data
-    medios_res = supabase.table("medios_pago").select("id, nombre").eq("activo", True).execute()
-    
-    # Inflow (Sales - only Paid)
-    ingresos_res = supabase.table("pedidos").select("medio_pago_id, total") \
-        .eq("estado", "pagado").execute()
-        
-    # Outflow (Expenses)
-    egresos_res = supabase.table("gastos").select("medio_pago_id, valor").execute()
-    
-    # Process
-    flujo_caja = []
-    medios_map = {m['id']: {'nombre': m['nombre'], 'ingresos': 0, 'egresos': 0} for m in medios_res.data}
-    
-    for i in ingresos_res.data:
-        mid = i['medio_pago_id']
-        if mid in medios_map:
-            medios_map[mid]['ingresos'] += i['total']
-            
-    for e in egresos_res.data:
-        mid = e['medio_pago_id']
-        if mid in medios_map:
-            medios_map[mid]['egresos'] += e['valor']
-            
-    for mid, data in medios_map.items():
-        flujo_caja.append({
-            "medio": data['nombre'],
-            "ingresos": data['ingresos'],
-            "egresos": data['egresos'],
-            "saldo": data['ingresos'] - data['egresos']
-        })
+    # 6. Cash Flow by Payment Method (Flujo de Caja)
+    # Use the optimized SQL View which calculates sales, expenses, and transfers
+    try:
+        flujo_res = supabase.table("view_saldos_medios_pago").select("*").execute()
+        flujo_caja = []
+        for item in flujo_res.data:
+            flujo_caja.append({
+                "medio": item['nombre'],
+                "ingresos": item['ingresos'],
+                "egresos": item['egresos'],
+                "saldo": item['saldo']
+            })
+    except Exception as e:
+        print(f"Error fetching cash flow view: {e}")
+        flujo_caja = []
 
     return {
         "ventas_mes": total_ventas_mes,

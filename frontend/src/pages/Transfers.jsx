@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { transfersService, paymentMethodsService } from '../services/api';
-import { ArrowRightLeft, Save } from 'lucide-react';
+import { ArrowRightLeft, Save, CreditCard } from 'lucide-react';
 
 export default function Transfers() {
     const [transfers, setTransfers] = useState([]);
     const [methods, setMethods] = useState([]);
+    const [balances, setBalances] = useState([]);
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState({
         origen_id: '',
@@ -21,12 +22,15 @@ export default function Transfers() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [transfersRes, methodsRes] = await Promise.all([
+            const [transfersRes, methodsRes, balancesRes] = await Promise.all([
                 transfersService.getAll(),
-                paymentMethodsService.getAll()
+                paymentMethodsService.getAll(),
+                transfersService.getBalances()
             ]);
             setTransfers(transfersRes.data);
-            setMethods(methodsRes.data.filter(m => m.activo));
+            console.log("Methods Response:", methodsRes.data);
+            setMethods(methodsRes.data);
+            setBalances(balancesRes.data || []);
         } catch (error) {
             console.error("Error loading data", error);
         } finally {
@@ -70,6 +74,25 @@ export default function Transfers() {
         <div>
             <div className="page-header mb-6">
                 <h1>Movimientos de Caja</h1>
+            </div>
+
+            {/* Balances Widget */}
+            <div className="stats-grid mb-6">
+                {balances.map((item, idx) => (
+                    <div key={idx} className="card mb-0">
+                        <div className="flex items-center gap-2 mb-2 text-muted">
+                            <CreditCard size={16} />
+                            <small>{item.nombre}</small>
+                        </div>
+                        <h3 className={item.saldo >= 0 ? "text-success" : "text-danger"}>
+                            {formatCurrency(item.saldo)}
+                        </h3>
+                        <div className="flex justify-between mt-2 pt-2" style={{ borderTop: '1px solid var(--border)', fontSize: '0.75rem' }}>
+                            <span className="text-success" title="Ingresos Totales">+{formatCurrency(item.ingresos)}</span>
+                            <span className="text-danger" title="Egresos Totales">-{formatCurrency(item.egresos)}</span>
+                        </div>
+                    </div>
+                ))}
             </div>
 
             <div className="card mb-6 p-6">
@@ -158,9 +181,9 @@ export default function Transfers() {
                                     <div>
                                         <div className="text-sm text-muted mb-1">{new Date(t.fecha).toLocaleDateString()}</div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-danger font-medium">{getMethodName(t.origen_id)}</span>
+                                            <span className="text-danger font-medium">{t.origen_nombre || getMethodName(t.origen_id)}</span>
                                             <ArrowRightLeft size={16} className="text-muted" />
-                                            <span className="text-success font-medium">{getMethodName(t.destino_id)}</span>
+                                            <span className="text-success font-medium">{t.destino_nombre || getMethodName(t.destino_id)}</span>
                                         </div>
                                         <p className="text-sm text-gray-400 mt-1 italic">{t.descripcion}</p>
                                     </div>

@@ -1,5 +1,6 @@
 import { Home, PlusCircle, Users, BarChart2, Package, ChefHat, List, Settings, Truck, CreditCard, MessageCircle, FileText, ArrowRightLeft } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
+import NavSection from './NavSection';
 
 export default function Layout() {
     return (
@@ -19,99 +20,97 @@ export default function Layout() {
                         <span className="nav-text">Inicio</span>
                     </NavLink>
 
-                    <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">PEDIDOS</div>
+                    <NavSection title="PEDIDOS" defaultOpen={true}>
+                        <NavLink
+                            to="/orders"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <List size={22} />
+                            <span className="nav-text">Pedidos del Día</span>
+                        </NavLink>
 
-                    <NavLink
-                        to="/orders"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <List size={22} />
-                        <span className="nav-text">Pedidos del Día</span>
-                    </NavLink>
+                        <NavLink
+                            to="/orders/new"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <PlusCircle size={22} />
+                            <span className="nav-text">Nuevo</span>
+                        </NavLink>
 
-                    <NavLink
-                        to="/orders/new"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <PlusCircle size={22} />
-                        <span className="nav-text">Nuevo Pedido</span>
-                    </NavLink>
+                        <NavLink
+                            to="/orders/report"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <FileText size={22} />
+                            <span className="nav-text">Reporte</span>
+                        </NavLink>
+                    </NavSection>
 
+                    <NavSection title="GASTOS" defaultOpen={true}>
+                        <NavLink
+                            to="/expenses/new"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <PlusCircle size={22} />
+                            <span className="nav-text">Nuevo</span>
+                        </NavLink>
 
+                        <NavLink
+                            to="/expenses"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <BarChart2 size={22} />
+                            <span className="nav-text">Reporte</span>
+                        </NavLink>
+                    </NavSection>
 
-                    <NavLink
-                        to="/orders/report"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <FileText size={22} />
-                        <span className="nav-text">Reporte Mensual</span>
-                    </NavLink>
+                    <NavSection title="CAJA" defaultOpen={true}>
+                        <NavLink
+                            to="/transfers"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <ArrowRightLeft size={22} />
+                            <span className="nav-text">Movimientos</span>
+                        </NavLink>
+                    </NavSection>
 
-                    <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">GASTOS</div>
+                    <NavSection title="CONFIGURACIÓN" defaultOpen={false}>
+                        <NavLink
+                            to="/clients"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <Users size={22} />
+                            <span className="nav-text">Clientes</span>
+                        </NavLink>
 
-                    <NavLink
-                        to="/expenses/new"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <PlusCircle size={22} />
-                        <span className="nav-text">Nuevo Gasto</span>
-                    </NavLink>
+                        <NavLink
+                            to="/suppliers"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <Truck size={22} />
+                            <span className="nav-text">Proveedores</span>
+                        </NavLink>
 
-                    <NavLink
-                        to="/expenses"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <BarChart2 size={22} />
-                        <span className="nav-text">Reporte Gastos</span>
-                    </NavLink>
+                        <NavLink
+                            to="/products"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <Package size={22} />
+                            <span className="nav-text">Productos</span>
+                        </NavLink>
 
-                    <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">CAJA</div>
-
-                    <NavLink
-                        to="/transfers"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <ArrowRightLeft size={22} />
-                        <span className="nav-text">Movimientos</span>
-                    </NavLink>
-
-                    <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">CONFIGURACIÓN</div>
-
-                    <NavLink
-                        to="/clients"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <Users size={22} />
-                        <span className="nav-text">Clientes</span>
-                    </NavLink>
-
-                    <NavLink
-                        to="/suppliers"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <Truck size={22} />
-                        <span className="nav-text">Proveedores</span>
-                    </NavLink>
-
-                    <NavLink
-                        to="/products"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <Package size={22} />
-                        <span className="nav-text">Productos</span>
-                    </NavLink>
-
-                    <NavLink
-                        to="/payment-methods"
-                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    >
-                        <CreditCard size={22} />
-                        <span className="nav-text">Medios de Pago</span>
-                    </NavLink>
+                        <NavLink
+                            to="/payment-methods"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                        >
+                            <CreditCard size={22} />
+                            <span className="nav-text">Medios Pago</span>
+                        </NavLink>
+                    </NavSection>
 
                     <button
                         onClick={() => import('../lib/supabase').then(m => m.supabase.auth.signOut())}
-                        className="nav-item"
+                        className="nav-item mt-auto"
                         style={{ marginTop: 'auto', background: 'transparent', border: 'none', width: '100%', cursor: 'pointer' }}
                     >
                         <div style={{ display: 'flex', gap: '0.75rem', color: 'var(--danger)' }}>

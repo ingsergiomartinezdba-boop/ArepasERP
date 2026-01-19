@@ -157,7 +157,7 @@ class Expense(ExpenseBase):
 
 class PaymentMethodBase(BaseModel):
     nombre: str
-    tipo: str # digital, efectivo, transferencia
+    tipo: Optional[str] = "digital" # Make optional for legacy data
     activo: Optional[bool] = True
 
 class PaymentMethodCreate(PaymentMethodBase):
@@ -168,7 +168,7 @@ class PaymentMethodUpdate(PaymentMethodBase):
 
 class PaymentMethod(PaymentMethodBase):
     id: int
-    created_at: datetime
+    created_at: Optional[datetime] = None # Make optional
     
     class Config:
         from_attributes = True
@@ -188,6 +188,8 @@ class TransferCreate(TransferBase):
 class Transfer(TransferBase):
     id: int
     created_at: datetime
+    origen_nombre: Optional[str] = None
+    destino_nombre: Optional[str] = None
 
     class Config:
         from_attributes = True
