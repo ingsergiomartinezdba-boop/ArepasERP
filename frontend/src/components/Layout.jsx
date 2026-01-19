@@ -1,4 +1,4 @@
-import { Home, PlusCircle, Users, BarChart2, Package, ChefHat, List, Settings, Truck, CreditCard, MessageCircle, FileText } from 'lucide-react';
+import { Home, PlusCircle, Users, BarChart2, Package, ChefHat, List, Settings, Truck, CreditCard, MessageCircle, FileText, ArrowRightLeft } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 export default function Layout() {
@@ -63,6 +63,16 @@ export default function Layout() {
                     >
                         <BarChart2 size={22} />
                         <span className="nav-text">Reporte Gastos</span>
+                    </NavLink>
+
+                    <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">CAJA</div>
+
+                    <NavLink
+                        to="/transfers"
+                        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                    >
+                        <ArrowRightLeft size={22} />
+                        <span className="nav-text">Movimientos</span>
                     </NavLink>
 
                     <div className="nav-section-title text-muted text-xs font-bold mt-4 mb-2 pl-3">CONFIGURACIÓN</div>

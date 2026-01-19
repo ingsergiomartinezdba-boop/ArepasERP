@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import orders, clients, products, expenses, reports, payment_methods, suppliers
+from .routers import orders, clients, products, expenses, reports, payment_methods, suppliers, transfers
 
 app = FastAPI(
     title="Arepas Factory ERP API",
@@ -30,3 +30,4 @@ app.include_router(expenses.router, prefix="/api/expenses", tags=["Expenses"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(payment_methods.router, prefix="/api/payment-methods", tags=["Payment Methods"])
 app.include_router(suppliers.router, prefix="/api/suppliers", tags=["Suppliers"])
+app.include_router(transfers.router, prefix="/api/transfers", tags=["Transfers"])

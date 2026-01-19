@@ -57,4 +57,9 @@ export const paymentMethodsService = {
     delete: (id) => api.delete(`/payment-methods/${id}`),
 };
 
+export const transfersService = {
+    getAll: () => api.get('/transfers/'),
+    create: (data) => api.post('/transfers/', data),
+};
+
 export default api;

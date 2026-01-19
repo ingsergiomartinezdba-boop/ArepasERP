@@ -11,6 +11,7 @@ import OrdersList from './pages/OrdersList';
 import Login from './pages/Login';
 import Suppliers from './pages/Suppliers';
 import PaymentMethods from './pages/PaymentMethods';
+import Transfers from './pages/Transfers';
 import OrdersReport from './pages/OrdersReport';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -34,6 +35,7 @@ function App() {
             <Route path="expenses/new" element={<ExpenseForm />} />
             <Route path="products" element={<Products />} />
             <Route path="payment-methods" element={<PaymentMethods />} />
+            <Route path="transfers" element={<Transfers />} />
           </Route>
         </Route>
       </Routes>

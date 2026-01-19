@@ -168,6 +168,26 @@ class PaymentMethodUpdate(PaymentMethodBase):
 
 class PaymentMethod(PaymentMethodBase):
     id: int
+    created_at: datetime
     
+    class Config:
+        from_attributes = True
+
+# --- Transfer Models ---
+
+class TransferBase(BaseModel):
+    origen_id: int
+    destino_id: int
+    valor: float
+    fecha: datetime
+    descripcion: Optional[str] = None
+
+class TransferCreate(TransferBase):
+    pass
+
+class Transfer(TransferBase):
+    id: int
+    created_at: datetime
+
     class Config:
         from_attributes = True
