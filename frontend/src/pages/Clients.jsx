@@ -49,7 +49,8 @@ export default function Clients() {
             direccion: '',
             ciudad: 'Bogotá',
             canal_venta: 'local',
-            condicion_pago: 'contado'
+            condicion_pago: 'contado',
+            mostrar_saldo_whatsapp: true
         });
     };
 
@@ -126,6 +127,19 @@ export default function Clients() {
                             <option value="whatsapp">WhatsApp</option>
                             <option value="domicilio">Domicilio</option>
                         </select>
+                    </div>
+
+                    <div className="form-group flex items-center gap-2 mt-4" style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <input
+                            type="checkbox"
+                            checked={editingClient.mostrar_saldo_whatsapp !== false}
+                            onChange={e => setEditingClient({ ...editingClient, mostrar_saldo_whatsapp: e.target.checked })}
+                            id="chkWhatsappBalance"
+                            style={{ width: '1.2rem', height: '1.2rem' }}
+                        />
+                        <label htmlFor="chkWhatsappBalance" className="mb-0" style={{ fontWeight: 'normal' }}>
+                            Mostrar Saldo Total en Reporte WhatsApp
+                        </label>
                     </div>
 
                     <button type="submit" className="btn btn-primary mt-4">

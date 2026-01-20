@@ -98,7 +98,7 @@ def get_whatsapp_summary(date_str: Optional[str] = None):
 
     # 1. Fetch orders for the target date to get the "Items of the day"
     response = supabase.table("pedidos")\
-        .select("id, cliente_id, total, estado, fecha, clientes(nombre), detalle_pedido(cantidad, productos(codigo_corto))")\
+        .select("id, cliente_id, total, estado, fecha, clientes(nombre, mostrar_saldo_whatsapp), detalle_pedido(cantidad, productos(codigo_corto))")\
         .eq("estado", "pendiente")\
         .gte("fecha", f"{target_date}T00:00:00")\
         .lte("fecha", f"{target_date}T23:59:59")\
@@ -113,13 +113,17 @@ def get_whatsapp_summary(date_str: Optional[str] = None):
     for order in daily_orders:
         cid = order['cliente_id']
         cname = order['clientes']['nombre'] if order['clientes'] else "Cliente"
+        # Check flag. Default to True if missing for backward compatibility
+        show_balance = order['clientes'].get('mostrar_saldo_whatsapp', True) if order['clientes'] else True
+        
         client_ids.add(cid)
 
         if cid not in client_data:
             client_data[cid] = {
                 "name": cname,
                 "items": [],
-                "total_debt": 0
+                "total_debt": 0,
+                "show_balance": show_balance
             }
         
         # Add today's items
@@ -154,8 +158,13 @@ def get_whatsapp_summary(date_str: Optional[str] = None):
         name = client['name']
         debt = client['total_debt']
         items = client['items']
+        show_balance = client['show_balance']
         
-        summary_text += f"*{name}* ${debt:,.0f}\n"
+        if show_balance:
+             summary_text += f"*{name}* ${debt:,.0f}\n"
+        else:
+             summary_text += f"*{name}*\n"
+             
         for item_str in items:
             summary_text += f"{item_str}\n"
         

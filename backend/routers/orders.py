@@ -24,13 +24,16 @@ def create_order(order: OrderCreate):
         product = prod_res.data[0]
         
         # Determine Price
-        # Check rule for this client and product
-        price_res = supabase.table("precios_cliente").select("precio_especial").eq("cliente_id", order.cliente_id).eq("producto_id", item.producto_id).eq("activo", True).execute()
-        
-        if price_res.data:
-            precio_aplicado = float(price_res.data[0]['precio_especial'])
+        if item.precio is not None and item.precio > 0:
+             precio_aplicado = float(item.precio)
         else:
-            precio_aplicado = float(product['precio_estandar'])
+             # Check rule for this client and product
+             price_res = supabase.table("precios_cliente").select("precio_especial").eq("cliente_id", order.cliente_id).eq("producto_id", item.producto_id).eq("activo", True).execute()
+             
+             if price_res.data:
+                 precio_aplicado = float(price_res.data[0]['precio_especial'])
+             else:
+                 precio_aplicado = float(product['precio_estandar'])
             
         subtotal = precio_aplicado * item.cantidad
         total_order += subtotal

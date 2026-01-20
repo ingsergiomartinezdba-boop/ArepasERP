@@ -41,6 +41,7 @@ class ClientBase(BaseModel):
     canal_venta: Optional[str] = None # whatsapp, local, domicilio
     condicion_pago: Optional[str] = "contado"
     cupo_credito: Optional[float] = 0
+    mostrar_saldo_whatsapp: Optional[bool] = True
 
 class ClientCreate(ClientBase):
     pass
@@ -96,6 +97,7 @@ class PriceRule(PriceRuleBase):
 class OrderItemCreate(BaseModel):
     producto_id: int
     cantidad: int
+    precio: Optional[float] = None
 
 class OrderCreate(BaseModel):
     cliente_id: int

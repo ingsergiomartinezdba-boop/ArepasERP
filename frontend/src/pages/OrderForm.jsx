@@ -15,6 +15,7 @@ export default function OrderForm() {
     const [selectedClient, setSelectedClient] = useState('');
     // Map of productId -> quantity
     const [quantities, setQuantities] = useState({});
+    const [prices, setPrices] = useState({});
     const [deliveryFee, setDeliveryFee] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -44,10 +45,13 @@ export default function OrderForm() {
                 if (order.fecha) setDate(order.fecha.split('T')[0]);
 
                 const qtyMap = {};
+                const priceMap = {};
                 order.items.forEach(item => {
                     qtyMap[item.producto_id] = item.cantidad;
+                    priceMap[item.producto_id] = item.precio_aplicado;
                 });
                 setQuantities(qtyMap);
+                setPrices(priceMap);
             }
         } catch (err) {
             console.error("Error loading form data", err);
@@ -65,6 +69,14 @@ export default function OrderForm() {
         }));
     };
 
+    const handlePriceChange = (productId, val) => {
+        const price = parseFloat(val);
+        setPrices(prev => ({
+            ...prev,
+            [productId]: isNaN(price) ? 0 : price
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!selectedClient) {
@@ -74,10 +86,18 @@ export default function OrderForm() {
 
         const items = Object.entries(quantities)
             .filter(([_, qty]) => qty > 0)
-            .map(([pid, qty]) => ({
-                producto_id: parseInt(pid),
-                cantidad: qty
-            }));
+            .map(([pid, qty]) => {
+                const product = products.find(p => p.id === parseInt(pid));
+                // Use custom price if set, otherwise standard
+                const customPrice = prices[pid];
+                const price = (customPrice !== undefined) ? customPrice : product?.precio_estandar;
+
+                return {
+                    producto_id: parseInt(pid),
+                    cantidad: qty,
+                    precio: price
+                };
+            });
 
         if (items.length === 0) {
             alert("Seleccione al menos un producto");
@@ -118,7 +138,8 @@ export default function OrderForm() {
     // Calculate total on the fly
     const totalProductos = products.reduce((acc, p) => {
         const qty = quantities[p.id] || 0;
-        return acc + (qty * p.precio_estandar);
+        const price = (prices[p.id] !== undefined) ? prices[p.id] : p.precio_estandar;
+        return acc + (qty * price);
     }, 0);
 
     const totalEstimado = totalProductos + (parseFloat(deliveryFee) || 0);
@@ -256,7 +277,17 @@ export default function OrderForm() {
                                         <h3 className="text-lg m-0">{p.nombre}</h3>
                                         <span className="badge badge-secondary">{p.codigo_corto}</span>
                                     </div>
-                                    <p className="text-muted mt-1">{formatCurrency(p.precio_estandar)}</p>
+                                    <div className="mt-1 flex items-center gap-1">
+                                        <label className="text-xs text-muted"> $</label>
+                                        <input
+                                            type="number"
+                                            className="form-control form-control-sm p-1 h-auto"
+                                            style={{ width: '100px', fontSize: '0.9rem', color: (prices[p.id] !== undefined && prices[p.id] !== p.precio_estandar) ? 'var(--warning)' : 'inherit' }}
+                                            value={(prices[p.id] !== undefined) ? prices[p.id] : p.precio_estandar}
+                                            onChange={e => handlePriceChange(p.id, e.target.value)}
+                                            step="50"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="mt-3">
