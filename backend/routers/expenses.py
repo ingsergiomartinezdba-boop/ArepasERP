@@ -1,91 +1,138 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import List
-from ..database import supabase
+from fastapi import APIRouter, HTTPException, status, Depends
+from typing import List, Optional
+from sqlalchemy.orm import Session, joinedload
+from ..database import get_db
+from ..sql_models import Gasto, Proveedor
 from ..models import Expense, ExpenseCreate
-from datetime import datetime
+from ..utils import get_now_colombia
 
 router = APIRouter()
 
 @router.get("/", response_model=List[Expense])
-def get_expenses(start_date: str = None, end_date: str = None):
-    query = supabase.table("gastos").select("*, proveedores(nombre)").order("fecha", desc=True)
+def get_expenses(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get expenses with optional date filtering"""
+    query = db.query(Gasto).outerjoin(Proveedor).order_by(Gasto.fecha.desc())
     
     if start_date and end_date:
-        if len(end_date) == 10:
-             end_date += "T23:59:59"
-        query = query.gte("fecha", start_date).lte("fecha", end_date)
+        # Parse dates
+        query = query.filter(Gasto.fecha >= start_date, Gasto.fecha <= end_date)
     else:
         query = query.limit(100)
-        
-    response = query.execute()
     
-    expenses = []
-    for g in response.data:
-        g['proveedor_nombre'] = g['proveedores']['nombre'] if g.get('proveedores') else None
-        expenses.append(g)
-        
-    return expenses
-
-@router.put("/{expense_id}", response_model=Expense)
-def update_expense(expense_id: int, expense: ExpenseCreate):
-    payload = expense.dict()
-    payload['updated_at'] = datetime.now().isoformat()
+    expenses = query.all()
     
-    # Logic: if Paid and fecha_pago None -> Set it to NOW
-    if payload.get('medio_pago_id'):
-        if not payload.get('fecha_pago'):
-            payload['fecha_pago'] = datetime.now().isoformat()
-    else:
-        # Switched to Credit or Unpaid -> Clear payment date
-        payload['fecha_pago'] = None
-
-    # Serialize dates
-    if payload.get('fecha'): payload['fecha'] = str(payload['fecha'])
-
-    response = supabase.table("gastos").update(payload).eq("id", expense_id).execute()
-    if not response.data:
-         raise HTTPException(status_code=404, detail="Expense not found")
-    return response.data[0]
+    # Convert to dict and add proveedor_nombre
+    result = []
+    for expense in expenses:
+        expense_dict = {
+            "id": expense.id,
+            "concepto": expense.concepto,
+            "categoria": expense.categoria,
+            "tipo_gasto": expense.tipo_gasto,
+            "fecha": expense.fecha,
+            "valor": float(expense.valor),
+            "proveedor_id": expense.proveedor_id,
+            "medio_pago_id": expense.medio_pago_id,
+            "pedido_id": expense.pedido_id,
+            "observaciones": expense.observaciones,
+            "created_at": expense.created_at,
+            "proveedor_nombre": None
+        }
+        
+        # Get proveedor nombre if exists
+        if expense.proveedor_id:
+            proveedor = db.query(Proveedor).filter(Proveedor.id == expense.proveedor_id).first()
+            if proveedor:
+                expense_dict["proveedor_nombre"] = proveedor.nombre
+        
+        result.append(expense_dict)
+    
+    return result
 
 @router.post("/", response_model=Expense, status_code=status.HTTP_201_CREATED)
-def create_expense(expense: ExpenseCreate):
+def create_expense(expense: ExpenseCreate, db: Session = Depends(get_db)):
+    """Create a new expense"""
     try:
-        # 1. Prepare Payload
-        payload = expense.dict()
-        payload['fecha'] = str(payload['fecha'])
+        expense_data = expense.dict()
         
-        # Auto-set Payment Date if Paid and Missing
-        # Default to Expense Date for initial entry if not specified
-        if payload.get('medio_pago_id') and not payload.get('fecha_pago'):
-             payload['fecha_pago'] = payload['fecha'] 
+        db_expense = Gasto(**expense_data)
+        db.add(db_expense)
+        db.commit()
+        db.refresh(db_expense)
+        
+        # Get proveedor nombre for response
+        expense_dict = {
+            "id": db_expense.id,
+            "concepto": db_expense.concepto,
+            "categoria": db_expense.categoria,
+            "tipo_gasto": db_expense.tipo_gasto,
+            "fecha": db_expense.fecha,
+            "valor": float(db_expense.valor),
+            "proveedor_id": db_expense.proveedor_id,
+            "medio_pago_id": db_expense.medio_pago_id,
+            "pedido_id": db_expense.pedido_id,
+            "observaciones": db_expense.observaciones,
+            "created_at": db_expense.created_at,
+            "proveedor_nombre": None
+        }
+        
+        if db_expense.proveedor_id:
+            proveedor = db.query(Proveedor).filter(Proveedor.id == db_expense.proveedor_id).first()
+            if proveedor:
+                expense_dict["proveedor_nombre"] = proveedor.nombre
+        
+        return expense_dict
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
-        # 2. Create Expense
-        response = supabase.table("gastos").insert(payload).execute()
-        if not response.data:
-             raise HTTPException(status_code=400, detail="Failed to create expense record")
-        new_expense = response.data[0]
-        
-        # 3. If Credit (No Payment Method) and has Provider -> Create Account Payable
-        if not expense.medio_pago_id and expense.proveedor_id:
-            debt_data = {
-                "proveedor_id": expense.proveedor_id,
-                "concepto": f"Gasto: {expense.concepto}",
-                "valor": expense.valor,
-                "fecha": str(expense.fecha),
-                "estado": "pendiente"
-            }
-            try:
-                print(f"Creating debt for provider {expense.proveedor_id}...")
-                supabase.table("cuentas_pagar").insert(debt_data).execute()
-            except Exception as e:
-                print(f"Error creating account payable: {e}")
-                
-        return new_expense
-    except Exception as outer_e:
-        print(f"CRITICAL ERROR in create_expense: {outer_e}")
-        raise HTTPException(status_code=500, detail=str(outer_e))
+@router.put("/{expense_id}", response_model=Expense)
+def update_expense(expense_id: int, expense_update: ExpenseCreate, db: Session = Depends(get_db)):
+    """Update an existing expense"""
+    db_expense = db.query(Gasto).filter(Gasto.id == expense_id).first()
+    if not db_expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    
+    for key, value in expense_update.dict(exclude_unset=True).items():
+        setattr(db_expense, key, value)
+    
+    db.commit()
+    db.refresh(db_expense)
+    
+    # Get proveedor nombre for response
+    expense_dict = {
+        "id": db_expense.id,
+        "concepto": db_expense.concepto,
+        "categoria": db_expense.categoria,
+        "tipo_gasto": db_expense.tipo_gasto,
+        "fecha": db_expense.fecha,
+        "valor": float(db_expense.valor),
+        "proveedor_id": db_expense.proveedor_id,
+        "medio_pago_id": db_expense.medio_pago_id,
+        "pedido_id": db_expense.pedido_id,
+        "observaciones": db_expense.observaciones,
+        "created_at": db_expense.created_at,
+        "proveedor_nombre": None
+    }
+    
+    if db_expense.proveedor_id:
+        proveedor = db.query(Proveedor).filter(Proveedor.id == db_expense.proveedor_id).first()
+        if proveedor:
+            expense_dict["proveedor_nombre"] = proveedor.nombre
+    
+    return expense_dict
 
 @router.delete("/{expense_id}")
-def delete_expense(expense_id: int):
-    supabase.table("gastos").delete().eq("id", expense_id).execute()
+def delete_expense(expense_id: int, db: Session = Depends(get_db)):
+    """Delete an expense"""
+    db_expense = db.query(Gasto).filter(Gasto.id == expense_id).first()
+    if not db_expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    
+    db.delete(db_expense)
+    db.commit()
     return {"message": "Expense deleted"}

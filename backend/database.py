@@ -1,30 +1,25 @@
-import os
-from supabase import create_client, Client
-from dotenv import load_dotenv
-from pathlib import Path
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Explicitly find the .env file in the parent directory (ArepasERP root)
-# This is safer than relying on CWD
-base_dir = Path(__file__).resolve().parent.parent
-env_path = base_dir / '.env'
+# Database Connection String
+# User: app_arepaserp
+# Pass: xdr5tgb
+# DB: ArepasERP
+SQLALCHEMY_DATABASE_URL = "postgresql://app_arepaserp:xdr5tgb@localhost:5432/ArepasERP"
 
-load_dotenv(dotenv_path=env_path)
+# Create Engine
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
+# Create SessionLocal class
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-print(f"--- DB CONFIG ---")
-print(f"Loading env from: {env_path}")
-if url:
-    print(f"Supabase URL loaded: {url[:15]}...") 
-else:
-    print("Supabase URL NOT found!")
+# Base class for ORM models
+Base = declarative_base()
 
-if not url or not key:
-    raise ValueError("Supabase URL and Key must be set in .env file")
-
-try:
-    supabase: Client = create_client(url, key)
-except Exception as e:
-    print(f"Error creating Supabase client: {e}")
-    raise e
+# Dependency for FastAPI routers
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

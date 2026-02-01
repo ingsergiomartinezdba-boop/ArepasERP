@@ -106,6 +106,11 @@ class OrderCreate(BaseModel):
     fecha: Optional[datetime] = None # Defaults to now if None
     valor_domicilio: Optional[float] = 0
     estado: Optional[str] = "pendiente"
+    observaciones: Optional[str] = None
+
+class OrderStatusUpdate(BaseModel):
+    estado: str
+    medio_pago_id: Optional[int] = None
 
 class OrderItemResponse(BaseModel):
     id: int
@@ -121,6 +126,7 @@ class OrderResponse(BaseModel):
     cliente_nombre: Optional[str] = None # Joined field
     fecha: datetime
     total: float
+    monto_pagado: float = 0
     valor_domicilio: Optional[float] = 0
     medio_pago_id: Optional[int]
     estado: str
@@ -130,6 +136,32 @@ class OrderResponse(BaseModel):
         from_attributes = True
 
 # --- Expense Models ---
+# ... (keep existing)
+
+# --- Payment Method Models ---
+# ... (keep existing)
+
+# --- Transfer Models ---
+# ... (keep existing)
+
+# --- Receivable/Payment Models ---
+
+class PaymentReceivedBase(BaseModel):
+    cliente_id: int
+    monto: float
+    fecha: datetime
+    descripcion: Optional[str] = None
+    metodo_pago_id: Optional[int] = None
+
+class PaymentReceivedCreate(PaymentReceivedBase):
+    pass
+
+class PaymentReceived(PaymentReceivedBase):
+    id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 class ExpenseBase(BaseModel):
     concepto: str

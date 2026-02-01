@@ -10,11 +10,55 @@ const api = axios.create({
     },
 });
 
+// Request interceptor to add the auth token header to every request
+api.interceptors.request.use(async (config) => {
+    try {
+        // Dynamically import supabase to avoid circular dependencies if any
+        const { supabase } = await import('../lib/supabase');
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+            config.headers.Authorization = `Bearer ${session.access_token}`;
+        }
+    } catch (error) {
+        console.error("Error attaching auth token", error);
+    }
+    return config;
+});
+
+// Response interceptor to handle 401s (Token expired or backend auth failed)
+// Response interceptor to handle 401s (Token expired or backend auth failed)
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        if (error.response?.status === 401) {
+            console.warn("Unauthorized! Redirecting to login...");
+
+            // Avoid infinite loops if we are already at login
+            if (window.location.pathname.includes('/login')) {
+                return Promise.reject(error);
+            }
+
+            try {
+                const { supabase } = await import('../lib/supabase');
+                await supabase.auth.signOut();
+            } catch (e) {
+                console.error("Error signing out", e);
+            }
+
+            // Force hard redirect to login
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const clientsService = {
     getAll: () => api.get('/clients/'),
     getById: (id) => api.get(`/clients/${id}`),
     create: (data) => api.post('/clients/', data),
     update: (id, data) => api.put(`/clients/${id}`, data),
+    delete: (id) => api.delete(`/clients/${id}`),
 };
 
 export const productsService = {
@@ -61,6 +105,16 @@ export const transfersService = {
     getAll: () => api.get('/transfers/'),
     create: (data) => api.post('/transfers/', data),
     getBalances: () => api.get('/transfers/balances'),
+    update: (id, data) => api.put(`/transfers/${id}`, data),
+    delete: (id) => api.delete(`/transfers/${id}`),
+};
+
+export const receivablesService = {
+    getAccounts: () => api.get('/receivables/accounts'),
+    getHistory: () => api.get('/receivables/history'),
+    registerPayment: (data) => api.post('/receivables/payments', data),
+    deletePayment: (id) => api.delete(`/receivables/payments/${id}`),
+    updatePayment: (id, data) => api.put(`/receivables/payments/${id}`, data)
 };
 
 export default api;

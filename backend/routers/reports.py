@@ -1,158 +1,153 @@
-from fastapi import APIRouter
-from fastapi import APIRouter
-from ..database import supabase
-from typing import Dict, Any, Optional
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text, func
+from typing import Optional
 from datetime import datetime
+from ..database import get_db
+from ..sql_models import Pedido, Gasto, Cliente, DetallePedido, Producto
+from ..utils import get_now_colombia
 
 router = APIRouter()
 
 @router.get("/dashboard")
-def get_dashboard_stats():
-    today = datetime.now().date()
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    """Get dashboard statistics"""
+    today = get_now_colombia().date()
     month_start = today.replace(day=1)
     
-    # Next month calculation for upper bound
+    # Calculate next month for upper bound
     if today.month == 12:
         next_month = today.replace(year=today.year + 1, month=1, day=1)
     else:
         next_month = today.replace(month=today.month + 1, day=1)
-        
-    start_str = month_start.isoformat()
-    end_str = next_month.isoformat()
-    today_str = today.isoformat()
-
-    # 1. KPIs Queries
     
-    # Monthly Sales
-    ventas_mes_res = supabase.table("pedidos").select("total") \
-        .gte("fecha", start_str).lt("fecha", end_str).neq("estado", "cancelado").execute()
-    total_ventas_mes = sum(item['total'] for item in ventas_mes_res.data)
-
+    # Monthly Sales (excluding cancelled)
+    ventas_mes = db.query(func.sum(Pedido.total)).filter(
+        Pedido.fecha >= month_start,
+        Pedido.fecha < next_month,
+        Pedido.estado != 'cancelado'
+    ).scalar() or 0
+    
     # Monthly Expenses
-    gastos_mes_res = supabase.table("gastos").select("valor") \
-        .gte("fecha", start_str).lt("fecha", end_str).execute()
-    total_gastos_mes = sum(item['valor'] for item in gastos_mes_res.data)
-
-    # Daily Sales
-    ventas_hoy_res = supabase.table("pedidos").select("total") \
-        .gte("fecha", f"{today_str}T00:00:00").lte("fecha", f"{today_str}T23:59:59").neq("estado", "cancelado").execute()
-    total_ventas_hoy = sum(item['total'] for item in ventas_hoy_res.data)
-
-    # Daily Expenses
-    gastos_hoy_res = supabase.table("gastos").select("valor") \
-        .eq("fecha", today_str).execute()
-    total_gastos_hoy = sum(item['valor'] for item in gastos_hoy_res.data)
-
-    # Debtors
-    # Fallback to direct query if view doesn't exist or fails
-    # deudores = supabase.table("view_clientes_deudores").select("*").execute()
-    # Using direct query for reliability:
-    deudores_res = supabase.table("cuentas_cobrar").select("*, clientes(nombre)") \
-        .neq("estado", "pagado").order("fecha_vencimiento").execute()
+    gastos_mes = db.query(func.sum(Gasto.valor)).filter(
+        Gasto.fecha >= month_start,
+        Gasto.fecha < next_month
+    ).scalar() or 0
     
-    deudores_data = []
-    for d in deudores_res.data:
-        deudores_data.append({
-            "cuenta_cobrar_id": d['id'],
-            "cliente_id": d['cliente_id'],
-            "nombre": d['clientes']['nombre'] if d['clientes'] else "Unknown",
-            "saldo": d['saldo'],
-            "fecha_vencimiento": d['fecha_vencimiento']
-        })
-
-
-    # 6. Cash Flow by Payment Method (Flujo de Caja)
-    # Fetch Data
-    # 6. Cash Flow by Payment Method (Flujo de Caja)
-    # Use the optimized SQL View which calculates sales, expenses, and transfers
+    # Daily Sales
+    ventas_hoy = db.query(func.sum(Pedido.total)).filter(
+        func.date(Pedido.fecha) == today,
+        Pedido.estado != 'cancelado'
+    ).scalar() or 0
+    
+    # Daily Expenses
+    gastos_hoy = db.query(func.sum(Gasto.valor)).filter(
+        Gasto.fecha == today
+    ).scalar() or 0
+    
+    # Debtors (Pending Orders grouped by client)
+    deudores_query = db.query(
+        Cliente.id,
+        Cliente.nombre,
+        func.sum(Pedido.total - Pedido.monto_pagado).label('saldo')
+    ).join(Pedido).filter(
+        Pedido.estado == 'pendiente'
+    ).group_by(Cliente.id, Cliente.nombre).all()
+    
+    deudores_data = [
+        {
+            "cliente_id": d[0],
+            "nombre": d[1],
+            "saldo": float(d[2]) if d[2] else 0
+        }
+        for d in deudores_query
+    ]
+    
+    # Cash Flow from view
     try:
-        flujo_res = supabase.table("view_saldos_medios_pago").select("*").execute()
-        flujo_caja = []
-        for item in flujo_res.data:
-            flujo_caja.append({
-                "medio": item['nombre'],
-                "ingresos": item['ingresos'],
-                "egresos": item['egresos'],
-                "saldo": item['saldo']
-            })
+        result = db.execute(text("SELECT * FROM view_saldos_medios_pago")).fetchall()
+        flujo_caja = [
+            {
+                "medio": row[1],
+                "ingresos": float(row[3]) if row[3] else 0,
+                "egresos": float(row[4]) if row[4] else 0,
+                "saldo": float(row[5]) if row[5] else 0
+            }
+            for row in result
+        ]
     except Exception as e:
-        print(f"Error fetching cash flow view: {e}")
+        print(f"Error fetching cash flow: {e}")
         flujo_caja = []
-
+    
     return {
-        "ventas_mes": total_ventas_mes,
-        "gastos_mes": total_gastos_mes,
-        "ventas_hoy": total_ventas_hoy,
-        "gastos_hoy": total_gastos_hoy,
+        "ventas_mes": float(ventas_mes),
+        "gastos_mes": float(gastos_mes),
+        "ventas_hoy": float(ventas_hoy),
+        "gastos_hoy": float(gastos_hoy),
         "clientes_deudores": deudores_data,
         "flujo_caja": flujo_caja
     }
 
 @router.get("/whatsapp-summary")
-def get_whatsapp_summary(date_str: Optional[str] = None):
-    # Default to today if no date provided
+def get_whatsapp_summary(date_str: Optional[str] = None, db: Session = Depends(get_db)):
+    """Generate WhatsApp summary for daily orders"""
     if not date_str:
-        target_date = datetime.now().strftime("%Y-%m-%d")
+        target_date = get_now_colombia().date()
     else:
-        target_date = date_str
-
-    # 1. Fetch orders for the target date to get the "Items of the day"
-    response = supabase.table("pedidos")\
-        .select("id, cliente_id, total, estado, fecha, clientes(nombre, mostrar_saldo_whatsapp), detalle_pedido(cantidad, productos(codigo_corto))")\
-        .eq("estado", "pendiente")\
-        .gte("fecha", f"{target_date}T00:00:00")\
-        .lte("fecha", f"{target_date}T23:59:59")\
-        .execute()
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     
-    daily_orders = response.data
+    # Get pending orders for the target date
+    orders = db.query(Pedido).filter(
+        func.date(Pedido.fecha) == target_date,
+        Pedido.estado == 'pendiente'
+    ).all()
     
-    # 2. Group by Client
+    if not orders:
+        return {"text": f"*PEDIDOS {target_date}*\n\nNo hay pedidos pendientes para esta fecha."}
+    
+    # Group by client
     client_data = {}
     client_ids = set()
-
-    for order in daily_orders:
-        cid = order['cliente_id']
-        cname = order['clientes']['nombre'] if order['clientes'] else "Cliente"
-        # Check flag. Default to True if missing for backward compatibility
-        show_balance = order['clientes'].get('mostrar_saldo_whatsapp', True) if order['clientes'] else True
-        
+    
+    for order in orders:
+        cid = order.cliente_id
         client_ids.add(cid)
-
+        
+        # Get client info
+        cliente = db.query(Cliente).filter(Cliente.id == cid).first()
+        if not cliente:
+            continue
+            
         if cid not in client_data:
             client_data[cid] = {
-                "name": cname,
+                "name": cliente.nombre,
                 "items": [],
                 "total_debt": 0,
-                "show_balance": show_balance
+                "show_balance": cliente.mostrar_saldo_whatsapp
             }
         
-        # Add today's items
-        if order.get('detalle_pedido'):
-            for item in order['detalle_pedido']:
-                qty = item['cantidad']
-                code = item['productos']['codigo_corto'] if item['productos'] else "?"
-                client_data[cid]['items'].append(f"{qty} {code}")
-
-    # 3. Calculate Total Pending Debt for these clients
-    # Fetch ALL pending orders for these clients (Total Pendiente)
-    if client_ids:
-        debt_res = supabase.table("pedidos")\
-            .select("cliente_id, total")\
-            .in_("cliente_id", list(client_ids))\
-            .eq("estado", "pendiente")\
-            .execute()
+        # Get order details
+        detalles = db.query(DetallePedido).filter(DetallePedido.pedido_id == order.id).all()
+        for detalle in detalles:
+            producto = db.query(Producto).filter(Producto.id == detalle.producto_id).first()
+            if producto:
+                code = producto.codigo_corto or "?"
+                client_data[cid]['items'].append(f"{detalle.cantidad} {code}")
+    
+    # Calculate total pending debt for these clients
+    for cid in client_ids:
+        total_debt = db.query(func.sum(Pedido.total - Pedido.monto_pagado)).filter(
+            Pedido.cliente_id == cid,
+            Pedido.estado == 'pendiente'
+        ).scalar() or 0
         
-        for debt_item in debt_res.data:
-            cid = debt_item['cliente_id']
-            if cid in client_data:
-                client_data[cid]['total_debt'] += debt_item['total']
-
-    # 4. Build Text
-    # Sort by Client Name
+        if cid in client_data:
+            client_data[cid]['total_debt'] = float(total_debt)
+    
+    # Build WhatsApp text
     sorted_clients = sorted(client_data.values(), key=lambda x: x['name'])
-
-    summary_text = ""
-    summary_text += f"*PEDIDOS {target_date}*\n\n"
+    
+    summary_text = f"*PEDIDOS {target_date}*\n\n"
     
     for client in sorted_clients:
         name = client['name']
@@ -161,13 +156,13 @@ def get_whatsapp_summary(date_str: Optional[str] = None):
         show_balance = client['show_balance']
         
         if show_balance:
-             summary_text += f"*{name}* ${debt:,.0f}\n"
+            summary_text += f"*{name}* ${debt:,.0f}\n"
         else:
-             summary_text += f"*{name}*\n"
-             
+            summary_text += f"*{name}*\n"
+        
         for item_str in items:
             summary_text += f"{item_str}\n"
         
         summary_text += "\n"
-        
+    
     return {"text": summary_text.strip()}

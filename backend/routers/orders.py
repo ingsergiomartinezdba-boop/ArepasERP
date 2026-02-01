@@ -1,40 +1,42 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
-from ..database import supabase
-from ..models import OrderCreate, OrderResponse, OrderItemResponse, Product, PriceRule
-from pydantic import BaseModel
-from datetime import datetime
+from sqlalchemy.orm import Session
+from ..database import get_db
+from ..sql_models import Pedido, DetallePedido, Producto, Cliente, PrecioCliente
+from ..models import OrderCreate, OrderResponse, OrderStatusUpdate
+from ..utils import get_now_colombia
 
 router = APIRouter()
 
 @router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
-def create_order(order: OrderCreate):
+def create_order(order: OrderCreate, db: Session = Depends(get_db)):
+    """Create a new order with automatic price calculation"""
     # 1. Calculate prices and totals
     total_order = 0
     order_items_data = []
-
-    # Optimize: Fetch all products and price rules in fewer queries if possible
-    # For now, simplistic iteration is fine for small scale factory
     
     for item in order.items:
-        # Get Product
-        prod_res = supabase.table("productos").select("*").eq("id", item.producto_id).execute()
-        if not prod_res.data:
+        # Get product
+        product = db.query(Producto).filter(Producto.id == item.producto_id).first()
+        if not product:
             raise HTTPException(status_code=400, detail=f"Product {item.producto_id} not found")
-        product = prod_res.data[0]
         
-        # Determine Price
+        # Determine price
         if item.precio is not None and item.precio > 0:
-             precio_aplicado = float(item.precio)
+            precio_aplicado = float(item.precio)
         else:
-             # Check rule for this client and product
-             price_res = supabase.table("precios_cliente").select("precio_especial").eq("cliente_id", order.cliente_id).eq("producto_id", item.producto_id).eq("activo", True).execute()
-             
-             if price_res.data:
-                 precio_aplicado = float(price_res.data[0]['precio_especial'])
-             else:
-                 precio_aplicado = float(product['precio_estandar'])
+            # Check for special price rule
+            price_rule = db.query(PrecioCliente).filter(
+                PrecioCliente.cliente_id == order.cliente_id,
+                PrecioCliente.producto_id == item.producto_id,
+                PrecioCliente.activo == True
+            ).first()
             
+            if price_rule:
+                precio_aplicado = float(price_rule.precio_especial)
+            else:
+                precio_aplicado = float(product.precio_estandar)
+        
         subtotal = precio_aplicado * item.cantidad
         total_order += subtotal
         
@@ -44,309 +46,196 @@ def create_order(order: OrderCreate):
             "precio_aplicado": precio_aplicado,
             "subtotal": subtotal
         })
-
-    # 2. Create Order
+    
+    # 2. Add delivery fee if applicable
     domicilio = order.valor_domicilio if order.valor_domicilio else 0
     total_order += domicilio
     
+    # 3. Create order
     order_data = {
         "cliente_id": order.cliente_id,
-        "fecha": order.fecha.isoformat() if order.fecha else datetime.now().isoformat(),
+        "fecha": order.fecha if order.fecha else get_now_colombia(),
         "total": total_order,
         "valor_domicilio": domicilio,
         "medio_pago_id": order.medio_pago_id,
-        "estado": order.estado
+        "estado": order.estado or 'pendiente',
+        "observaciones": order.observaciones
     }
     
-    new_order_res = supabase.table("pedidos").insert(order_data).execute()
-    new_order_id = new_order_res.data[0]['id']
+    db_order = Pedido(**order_data)
+    db.add(db_order)
+    db.commit()
+    db.refresh(db_order)
     
-    # 3. Create Order Details
+    # 4. Create order details
     for item_data in order_items_data:
-        item_data["pedido_id"] = new_order_id
-        supabase.table("detalle_pedido").insert(item_data).execute()
-        
-    # 4. Update Accounts Receivable (Cuentas por Cobrar) if credit/pending
-    if order.estado != 'pagado': # Assuming 'pagado' means fully settled immediately
-        # Check if paying later
-        # Create record in cuentas_cobrar
-        cuenta_data = {
-            "cliente_id": order.cliente_id,
-            "pedido_id": new_order_id,
-            "valor_total": total_order,
-            "valor_pagado": 0, # Assuming 0 initial payment if not fully paid
-             # Default due date? Let's say immediate for now, user can update later or we add logic
-            "fecha_vencimiento": datetime.now().isoformat(),
-            "estado": "pendiente"
-        }
-        supabase.table("cuentas_cobrar").insert(cuenta_data).execute()
-
-    # 5. Build Response
-    # Re-fetch or construct response. Constructing is faster.
-    response_items = []
-    for item in order_items_data:
-        response_items.append(OrderItemResponse(
-            id=0, # Placeholder, we didn't fetch back individual IDs
-            producto_id=item['producto_id'],
-            cantidad=item['cantidad'],
-            precio_aplicado=item['precio_aplicado'],
-            subtotal=item['subtotal']
-        ))
-        
-    return OrderResponse(
-        id=new_order_id,
-        cliente_id=order.cliente_id,
-        fecha=datetime.fromisoformat(order_data['fecha']),
-        total=total_order,
-        valor_domicilio=domicilio,
-        medio_pago_id=order.medio_pago_id,
-        estado=order.estado,
-        items=response_items
-    )
+        item_data["pedido_id"] = db_order.id
+        db_detail = DetallePedido(**item_data)
+        db.add(db_detail)
+    
+    db.commit()
+    
+    # 5. Return order with details
+    return get_order_response(db_order.id, db)
 
 @router.get("/", response_model=List[OrderResponse])
-def get_orders(start_date: str = None, end_date: str = None, client_id: int = None, status: str = None):
-    # Fetch orders with items
-    # Supabase join syntax: select("*, detalle_pedido(*, productos(nombre))")
-    query = supabase.table("pedidos").select("*, clientes(nombre), detalle_pedido(id, producto_id, cantidad, precio_aplicado, subtotal, productos(nombre))").order("fecha", desc=True)
+def get_orders(
+    start_date: str = None,
+    end_date: str = None,
+    cliente_id: int = None,
+    estado: str = None,
+    db: Session = Depends(get_db)
+):
+    """Get orders with optional filters"""
+    query = db.query(Pedido).order_by(Pedido.fecha.desc())
     
     if start_date and end_date:
-        if len(end_date) == 10: # YYYY-MM-DD
-             end_date += "T23:59:59"
-        query = query.gte("fecha", start_date).lte("fecha", end_date)
-    else:
-        # If no date range, and no other filters, limit. But if Client ID provided, maybe don't limit?
-        if not client_id:
-            query = query.limit(50)
-
-    if client_id:
-        query = query.eq("cliente_id", client_id)
+        query = query.filter(Pedido.fecha >= start_date, Pedido.fecha <= end_date)
     
-    if status:
-        query = query.eq("estado", status)
-        
-    response = query.execute()
+    if cliente_id:
+        query = query.filter(Pedido.cliente_id == cliente_id)
     
-    # Transform to flat structure for Pydantic models if needed or use Aliases
-    orders = []
-    for o in response.data:
-        items = []
-        for i in o['detalle_pedido']:
-             items.append({
-                 "id": i['id'],
-                 "producto_id": i['producto_id'],
-                 "producto_nombre": i['productos']['nombre'] if i['productos'] else "Unknown",
-                 "cantidad": i['cantidad'],
-                 "precio_aplicado": i['precio_aplicado'],
-                 "subtotal": i['subtotal']
-             })
-        
-        orders.append({
-            "id": o['id'],
-            "cliente_id": o['cliente_id'],
-            "cliente_nombre": o['clientes']['nombre'] if o['clientes'] else "Unknown",
-            "fecha": o['fecha'],
-            "total": o['total'],
-            "valor_domicilio": o.get('valor_domicilio', 0),
-            "medio_pago_id": o['medio_pago_id'],
-            "estado": o['estado'],
-            "items": items
-        })
-    return orders
+    if estado:
+        query = query.filter(Pedido.estado == estado)
+    
+    orders = query.limit(100).all()
+    
+    return [get_order_response(order.id, db) for order in orders]
 
 @router.get("/{order_id}", response_model=OrderResponse)
-def get_order(order_id: int):
-    response = supabase.table("pedidos").select("*, clientes(nombre), detalle_pedido(id, producto_id, cantidad, precio_aplicado, subtotal, productos(nombre))").eq("id", order_id).execute()
-    
-    if not response.data:
+def get_order(order_id: int, db: Session = Depends(get_db)):
+    """Get a specific order by ID"""
+    order = db.query(Pedido).filter(Pedido.id == order_id).first()
+    if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    
+    return get_order_response(order_id, db)
+
+@router.put("/{order_id}", response_model=OrderResponse)
+def update_order(order_id: int, order_update: OrderCreate, db: Session = Depends(get_db)):
+    """Update an existing order"""
+    db_order = db.query(Pedido).filter(Pedido.id == order_id).first()
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    try:
+        # Recalculate totals
+        total_order = 0
         
-    o = response.data[0]
+        # Delete existing details
+        db.query(DetallePedido).filter(DetallePedido.pedido_id == order_id).delete()
+        
+        # Add new details
+        for item in order_update.items:
+            product = db.query(Producto).filter(Producto.id == item.producto_id).first()
+            if not product:
+                continue
+            
+            # Determine price
+            if item.precio is not None and item.precio > 0:
+                precio_aplicado = float(item.precio)
+            else:
+                price_rule = db.query(PrecioCliente).filter(
+                    PrecioCliente.cliente_id == order_update.cliente_id,
+                    PrecioCliente.producto_id == item.producto_id,
+                    PrecioCliente.activo == True
+                ).first()
+                
+                precio_aplicado = float(price_rule.precio_especial) if price_rule else float(product.precio_estandar)
+            
+            subtotal = precio_aplicado * item.cantidad
+            total_order += subtotal
+            
+            db_detail = DetallePedido(
+                pedido_id=order_id,
+                producto_id=item.producto_id,
+                cantidad=item.cantidad,
+                precio_aplicado=precio_aplicado,
+                subtotal=subtotal
+            )
+            db.add(db_detail)
+        
+        # 2. Update order
+        domicilio = order_update.valor_domicilio if order_update.valor_domicilio else 0
+        total_order += domicilio
+        
+        db_order.total = total_order
+        db_order.valor_domicilio = domicilio
+        db_order.estado = order_update.estado or db_order.estado
+        db_order.medio_pago_id = order_update.medio_pago_id
+        db_order.observaciones = order_update.observaciones
+        
+        db.commit()
+        
+        return get_order_response(order_id, db)
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/{order_id}/status")
+def update_order_status(order_id: int, update_data: OrderStatusUpdate, db: Session = Depends(get_db)):
+    """Update only the order status and potentially the payment method"""
+    db_order = db.query(Pedido).filter(Pedido.id == order_id).first()
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    db_order.estado = update_data.estado
+    if update_data.medio_pago_id is not None:
+        db_order.medio_pago_id = update_data.medio_pago_id
+        
+    db.commit()
+    
+    return {"message": "Status updated", "estado": update_data.estado}
+
+@router.delete("/{order_id}")
+def delete_order(order_id: int, db: Session = Depends(get_db)):
+    """Delete an order and its details"""
+    db_order = db.query(Pedido).filter(Pedido.id == order_id).first()
+    if not db_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Details will be deleted automatically due to CASCADE
+    db.delete(db_order)
+    db.commit()
+    
+    return {"message": "Order deleted"}
+
+# Helper function
+def get_order_response(order_id: int, db: Session):
+    """Build order response with all details"""
+    order = db.query(Pedido).filter(Pedido.id == order_id).first()
+    if not order:
+        return None
+    
+    # Get client
+    cliente = db.query(Cliente).filter(Cliente.id == order.cliente_id).first()
+    
+    # Get details
+    details = db.query(DetallePedido).filter(DetallePedido.pedido_id == order_id).all()
+    
     items = []
-    for i in o['detalle_pedido']:
+    for detail in details:
+        producto = db.query(Producto).filter(Producto.id == detail.producto_id).first()
         items.append({
-            "id": i['id'],
-            "producto_id": i['producto_id'],
-            "producto_nombre": i['productos']['nombre'] if i['productos'] else "Unknown",
-            "cantidad": i['cantidad'],
-            "precio_aplicado": i['precio_aplicado'],
-            "subtotal": i['subtotal']
+            "id": detail.id,
+            "producto_id": detail.producto_id,
+            "producto_nombre": producto.nombre if producto else "Desconocido",
+            "cantidad": detail.cantidad,
+            "precio_aplicado": float(detail.precio_aplicado),
+            "subtotal": float(detail.subtotal)
         })
     
     return {
-        "id": o['id'],
-        "cliente_id": o['cliente_id'],
-        "cliente_nombre": o['clientes']['nombre'] if o['clientes'] else "Unknown",
-        "fecha": o['fecha'],
-        "total": o['total'],
-        "valor_domicilio": o.get('valor_domicilio', 0),
-        "medio_pago_id": o['medio_pago_id'],
-        "estado": o['estado'],
-        "items": items
-    }
-
-@router.put("/{order_id}", response_model=OrderResponse)
-def update_order(order_id: int, order: OrderCreate):
-    # 1. Verify existence
-    existing = supabase.table("pedidos").select("*").eq("id", order_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    # 2. Calculate New Totals & Items (Existing Logic Reused)
-    total_order = 0
-    order_items_data = []
-
-    for item in order.items:
-        # Get Product
-        prod_res = supabase.table("productos").select("*").eq("id", item.producto_id).execute()
-        if not prod_res.data:
-            continue # Skip invalid products or raise error
-        product = prod_res.data[0]
-        
-        # Determine Price (Re-check rules in case they changed, or stick to original?)
-        # Better to re-calculate for accuracy on "Modify"
-        price_res = supabase.table("precios_cliente").select("precio_especial").eq("cliente_id", order.cliente_id).eq("producto_id", item.producto_id).eq("activo", True).execute()
-        
-        if price_res.data:
-            precio_aplicado = float(price_res.data[0]['precio_especial'])
-        else:
-            precio_aplicado = float(product['precio_estandar'])
-            
-        subtotal = precio_aplicado * item.cantidad
-        total_order += subtotal
-        
-        order_items_data.append({
-            "pedido_id": order_id,
-            "producto_id": item.producto_id,
-            "cantidad": item.cantidad,
-            "precio_aplicado": precio_aplicado,
-            "subtotal": subtotal
-        })
-
-    domicilio = order.valor_domicilio if order.valor_domicilio else 0
-    total_order += domicilio
-
-    # 3. Update Order Header
-    # Ensure creation date ('fecha') is NOT changed.
-    # Add updated_at timestamp.
-    order_data = {
+        "id": order.id,
         "cliente_id": order.cliente_id,
-        "fecha": order.fecha.isoformat() if order.fecha else datetime.now().isoformat(), 
-        "total": total_order,
-        "valor_domicilio": domicilio,
+        "cliente_nombre": cliente.nombre if cliente else "Desconocido",
+        "fecha": order.fecha,
+        "total": float(order.total),
+        "monto_pagado": float(order.monto_pagado or 0),
+        "valor_domicilio": float(order.valor_domicilio or 0),
         "medio_pago_id": order.medio_pago_id,
         "estado": order.estado,
-        "updated_at": datetime.now().isoformat()
+        "observaciones": order.observaciones,
+        "items": items
     }
-    
-    # If using OrderCreate model, 'fecha' might be passed, but we ignore it for updates 
-    # as per user request "date cannot be changed".
-    
-    supabase.table("pedidos").update(order_data).eq("id", order_id).execute()
-
-    # 4. Replace Items (Delete All for this Order -> Insert New)
-    # Note: RLS might block DELETE if not configured? No, "Acceso Total Detalle" covers it.
-    supabase.table("detalle_pedido").delete().eq("pedido_id", order_id).execute()
-    if order_items_data:
-        supabase.table("detalle_pedido").insert(order_items_data).execute()
-
-    # 5. Update Accounts Receivable (Cuentas por Cobrar)
-    # 5. Sync Accounts Receivable (Cuentas por Cobrar)
-    ar_res = supabase.table("cuentas_cobrar").select("*").eq("pedido_id", order_id).execute()
-    existing_ar = ar_res.data[0] if ar_res.data else None
-    
-    if order.estado == 'cancelado':
-        if existing_ar:
-            supabase.table("cuentas_cobrar").delete().eq("id", existing_ar['id']).execute()
-            
-    elif order.estado == 'pagado':
-        if existing_ar:
-             supabase.table("cuentas_cobrar").update({
-                 "valor_total": total_order,
-                 "valor_pagado": total_order,
-                 "estado": "pagado"
-             }).eq("id", existing_ar['id']).execute()
-             
-    else: # Pendiente
-        if existing_ar:
-            supabase.table("cuentas_cobrar").update({
-                "valor_total": total_order,
-                "estado": "pendiente"
-            }).eq("id", existing_ar['id']).execute()
-        else:
-            # Create new if missing
-            cuenta_data = {
-                "cliente_id": order.cliente_id,
-                "pedido_id": order_id,
-                "valor_total": total_order,
-                "valor_pagado": 0,
-                "fecha_vencimiento": datetime.now().isoformat(),
-                "estado": "pendiente"
-            }
-            supabase.table("cuentas_cobrar").insert(cuenta_data).execute()
-
-    # 6. Return Updated Order (Reuse get_order logic or construct)
-    return get_order(order_id)
-
-class OrderStatusUpdate(BaseModel):
-    estado: str
-    medio_pago_id: int | None = None
-
-@router.patch("/{order_id}/status")
-def patch_order_status(order_id: int, status_update: OrderStatusUpdate):
-    # 1. Fetch Order
-    res = supabase.table("pedidos").select("*").eq("id", order_id).execute()
-    if not res.data:
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    order = res.data[0]
-    
-    # 2. Validation
-    if status_update.estado == 'pagado':
-        # Must have payment method either in payload or already in DB
-        if not status_update.medio_pago_id and not order['medio_pago_id']:
-             raise HTTPException(status_code=400, detail="Payment Method is required when marking as Paid.")
-    
-    # 3. Update Data
-    update_data = {"estado": status_update.estado}
-    if status_update.medio_pago_id:
-        update_data["medio_pago_id"] = status_update.medio_pago_id
-        
-    supabase.table("pedidos").update(update_data).eq("id", order_id).execute()
-    
-    # 4. Update Accounts Receivable (Cuentas por Cobrar)
-    # If Paid -> Update valor_pagado to match total
-    # If Pendiente -> Update valor_pagado to 0? Or just leave it?
-    # Usually "Pagado" means fully paid.
-    
-    if status_update.estado == 'pagado':
-         supabase.table("cuentas_cobrar").update({
-             "valor_pagado": order['total'],
-             "estado": "pagado"
-         }).eq("pedido_id", order_id).execute()
-    elif status_update.estado == 'pendiente':
-        # Check if exists first
-        ar_res = supabase.table("cuentas_cobrar").select("*").eq("pedido_id", order_id).execute()
-        if ar_res.data:
-            # Update existing
-             supabase.table("cuentas_cobrar").update({
-                 "valor_pagado": 0,
-                 "estado": "pendiente"
-             }).eq("pedido_id", order_id).execute()
-        else:
-             # Create new if missing (restore debt)
-             cuenta_data = {
-                "cliente_id": order['cliente_id'],
-                "pedido_id": order_id,
-                "valor_total": order['total'],
-                "valor_pagado": 0,
-                "fecha_vencimiento": datetime.now().isoformat(),
-                "estado": "pendiente"
-            }
-             supabase.table("cuentas_cobrar").insert(cuenta_data).execute()
-
-    elif status_update.estado == 'cancelado':
-        # Void the debt (delete accounts receivable record)
-        supabase.table("cuentas_cobrar").delete().eq("pedido_id", order_id).execute()
-
-    return {"message": "Status updated"}
