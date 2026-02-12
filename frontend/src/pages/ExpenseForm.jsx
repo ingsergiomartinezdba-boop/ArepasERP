@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { expensesService, suppliersService, paymentMethodsService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, CheckCircle2, Clock, Wallet, DollarSign, FileText } from 'lucide-react';
+import { Save, ArrowLeft, Clock, Wallet, DollarSign, FileText, Tag, List } from 'lucide-react';
+import TripleDateSelector from '../components/TripleDateSelector';
 
 export default function ExpenseForm() {
     const navigate = useNavigate();
@@ -69,36 +70,66 @@ export default function ExpenseForm() {
     };
 
     return (
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <div className="flex items-center gap-4 mb-4">
-                <button onClick={() => navigate('/expenses')} className="btn btn-secondary" style={{ width: 'auto', padding: '0.4rem' }}>
-                    <ArrowLeft size={20} />
-                </button>
-                <h1>Nuevo Gasto</h1>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => navigate('/expenses')} className="btn btn-secondary" style={{ width: '40px', height: '40px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ArrowLeft size={20} />
+                    </button>
+                    <h1 className="m-0 text-2xl font-bold">Nuevo Gasto</h1>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <TripleDateSelector
+                        value={form.fecha}
+                        onChange={(newDate) => setForm({ ...form, fecha: newDate })}
+                        style={{ padding: '0.2rem 0.6rem', minWidth: '260px' }}
+                    />
+                    <button
+                        onClick={handleSubmit}
+                        className="btn btn-primary"
+                        style={{ width: 'auto', padding: '0.6rem 1rem' }}
+                        disabled={loading}
+                    >
+                        <Save size={20} />
+                    </button>
+                </div>
             </div>
 
-            <div className="card">
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label>Concepto *</label>
-                        <input
-                            value={form.concepto}
-                            onChange={e => setForm({ ...form, concepto: e.target.value })}
-                            placeholder="Ej. Bulto de maíz"
-                            required
-                        />
-                    </div>
+            <div className="card p-6">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="form-group md:col-span-2">
+                            <label className="text-sm text-muted mb-1 block">Concepto / Detalle *</label>
+                            <div className="relative">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+                                    <Tag size={16} />
+                                </div>
+                                <input
+                                    className="pl-10"
+                                    value={form.concepto}
+                                    onChange={e => setForm({ ...form, concepto: e.target.value })}
+                                    placeholder="Ej. Bulto de maíz, Servicios públicos..."
+                                    required
+                                />
+                            </div>
+                        </div>
 
-                    <div className="form-group">
-                        <label>Valor *</label>
-                        <div className="flex items-center">
-                            <span style={{ marginRight: '8px' }}>$</span>
-                            <input
-                                type="number"
-                                value={form.valor}
-                                onChange={e => setForm({ ...form, valor: e.target.value })}
-                                required
-                            />
+                        <div className="form-group">
+                            <label className="text-sm text-muted mb-1 block">Valor *</label>
+                            <div className="relative">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-success font-bold">
+                                    $
+                                </div>
+                                <input
+                                    type="number"
+                                    className="pl-8 text-lg font-bold"
+                                    value={form.valor}
+                                    onChange={e => setForm({ ...form, valor: e.target.value })}
+                                    placeholder="0"
+                                    required
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -109,8 +140,8 @@ export default function ExpenseForm() {
                             <button
                                 type="button"
                                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-bold transition-all ${form.estado_pago === 'pagado'
-                                        ? 'bg-emerald-600 text-white'
-                                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                     }`}
                                 onClick={() => setForm({ ...form, estado_pago: 'pagado' })}
                             >
@@ -120,8 +151,8 @@ export default function ExpenseForm() {
                             <button
                                 type="button"
                                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-bold transition-all ${form.estado_pago === 'credito'
-                                        ? 'bg-red-600 text-white'
-                                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                     }`}
                                 onClick={() => setForm({ ...form, estado_pago: 'credito', medio_pago_id: '' })}
                             >
@@ -163,45 +194,45 @@ export default function ExpenseForm() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="form-group">
-                            <label>Categoría</label>
+                            <label className="text-sm text-muted mb-1 block">Categoría</label>
                             <select
                                 value={form.categoria}
                                 onChange={e => setForm({ ...form, categoria: e.target.value })}
                                 className="form-control"
                             >
-                                <option value="materia_prima">Materia Prima</option>
-                                <option value="produccion">Producción</option>
-                                <option value="mantenimiento">Mantenimiento</option>
-                                <option value="transporte">Transporte</option>
-                                <option value="servicios">Servicios</option>
-                                <option value="nomina">Nómina</option>
-                                <option value="administracion">Admin</option>
-                                <option value="otros">Otros</option>
+                                <option value="materia_prima">📦 Materia Prima</option>
+                                <option value="produccion">⚙️ Producción</option>
+                                <option value="mantenimiento">🔧 Mantenimiento</option>
+                                <option value="transporte">🚚 Transporte</option>
+                                <option value="servicios">💡 Servicios</option>
+                                <option value="nomina">👥 Nómina</option>
+                                <option value="administracion">📁 Administración</option>
+                                <option value="otros">✨ Otros</option>
                             </select>
                         </div>
 
                         <div className="form-group">
-                            <label>Tipo</label>
+                            <label className="text-sm text-muted mb-1 block">Tipo de Gasto</label>
                             <select
                                 value={form.tipo_gasto}
                                 onChange={e => setForm({ ...form, tipo_gasto: e.target.value })}
                                 className="form-control"
                             >
-                                <option value="variable">Variable</option>
-                                <option value="fijo">Fijo</option>
+                                <option value="variable">📈 Variable</option>
+                                <option value="fijo">🔒 Fijo</option>
                             </select>
                         </div>
                     </div>
 
                     <div className="form-group">
-                        <label>Proveedor {form.estado_pago === 'credito' ? '*' : '(Opcional)'}</label>
+                        <label className="text-sm text-muted mb-1 block">Proveedor {form.estado_pago === 'credito' ? '*' : '(Opcional)'}</label>
                         <select
                             value={form.proveedor_id}
                             onChange={e => setForm({ ...form, proveedor_id: e.target.value })}
                             className="form-control"
                             required={form.estado_pago === 'credito'}
                         >
-                            <option value="">-- Seleccionar --</option>
+                            <option value="">-- Seleccionar Proveedor --</option>
                             {suppliers.map(s => (
                                 <option key={s.id} value={s.id}>{s.nombre}</option>
                             ))}
@@ -209,28 +240,14 @@ export default function ExpenseForm() {
                     </div>
 
                     <div className="form-group">
-                        <label>Fecha *</label>
-                        <input
-                            type="date"
-                            value={form.fecha}
-                            onChange={e => setForm({ ...form, fecha: e.target.value })}
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Observaciones</label>
+                        <label className="text-sm text-muted mb-1 block">Observaciones adicionales</label>
                         <textarea
                             value={form.observaciones}
                             onChange={e => setForm({ ...form, observaciones: e.target.value })}
                             rows="2"
+                            placeholder="Notas importantes sobre este gasto..."
                         />
                     </div>
-
-                    <button type="submit" className="btn btn-primary mt-4 w-full" disabled={loading}>
-                        <Save size={18} style={{ marginRight: '8px' }} />
-                        {loading ? 'Guardando...' : 'Guardar Gasto'}
-                    </button>
                 </form>
             </div>
         </div>
