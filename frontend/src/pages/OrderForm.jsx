@@ -150,27 +150,36 @@ export default function OrderForm() {
     return (
         <div>
             <form onSubmit={handleSubmit}>
-                <div className="flex justify-between items-center mb-4">
-                    <h1 className="m-0">{isEditing ? 'Editar Pedido' : 'Nuevo Pedido'}</h1>
-                    <button
-                        type="submit"
-                        className="btn btn-primary"
-                        disabled={submitting || totalEstimado === 0}
-                        style={{ width: 'auto', padding: '0.6rem 1rem' }}
-                    >
-                        {submitting ? '...' : <Save size={24} />}
-                    </button>
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="m-0 text-2xl font-bold">{isEditing ? 'Editar Pedido' : 'Nuevo Pedido'}</h1>
+
+                    <div className="flex items-center gap-3">
+                        <TripleDateSelector
+                            value={date}
+                            onChange={setDate}
+                            style={{ padding: '0.2rem 0.6rem', minWidth: '260px' }}
+                        />
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={submitting || totalEstimado === 0}
+                            style={{ width: 'auto', padding: '0.6rem 1rem' }}
+                        >
+                            <Save size={24} />
+                        </button>
+                    </div>
                 </div>
-                <div className="card mb-4" style={{ borderBottom: '2px solid var(--primary)' }}>
-                    <div className="flex gap-4 mb-2">
-                        <div className="form-group mb-0" style={{ flex: 1 }}>
-                            <label className="text-muted text-sm">Cliente</label>
+                <div className="card mb-4 p-4" style={{ borderBottom: '2px solid var(--primary)' }}>
+                    <div className="flex items-center justify-between gap-8 w-full">
+                        {/* Grupo Cliente */}
+                        <div className="flex flex-col gap-1" style={{ flex: '1 1 50%' }}>
+                            <small className="text-muted uppercase tracking-widest font-bold" style={{ fontSize: '0.65rem' }}>Cliente</small>
                             <select
                                 value={selectedClient}
                                 onChange={e => setSelectedClient(e.target.value)}
                                 required
-                                className="form-control-lg"
-                                style={{ fontWeight: 'bold' }}
+                                className="form-control"
+                                style={{ fontWeight: 'bold', fontSize: '1.2rem', height: '48px', width: '100%' }}
                             >
                                 <option value="">Seleccionar Cliente...</option>
                                 {clients.map(c => (
@@ -179,29 +188,51 @@ export default function OrderForm() {
                             </select>
                         </div>
 
-                        <div className="form-group mb-0" style={{ flexShrink: 0 }}>
-                            <label className="text-muted text-sm">Fecha Pedido</label>
-                            <TripleDateSelector
-                                value={date}
-                                onChange={setDate}
-                                style={{ minWidth: '280px' }}
-                            />
+                        {/* Grupo Domicilio */}
+                        <div className="flex flex-col gap-1 items-center" style={{ flex: '0 1 200px' }}>
+                            <small className="text-muted uppercase tracking-widest font-bold text-center" style={{ fontSize: '0.65rem' }}>Domicilio</small>
+                            <div className="flex items-center gap-2 justify-center">
+                                <span className="text-success font-black text-xl">$</span>
+                                <input
+                                    type="number"
+                                    value={deliveryFee}
+                                    onChange={e => {
+                                        const raw = e.target.value;
+                                        if (raw === '') { setDeliveryFee(''); return; }
+                                        let val = parseInt(raw);
+                                        if (isNaN(val)) val = 0;
+                                        if (val < 0) val = 0;
+                                        if (val > 10000) val = 10000;
+                                        setDeliveryFee(val);
+                                    }}
+                                    className="form-control text-center"
+                                    style={{ fontWeight: 'bold', fontSize: '1.2rem', height: '48px', width: '100px' }}
+                                    min="0"
+                                    max="10000"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Grupo Total */}
+                        <div className="text-right flex flex-col justify-end" style={{ minWidth: '180px' }}>
+                            <small className="text-muted uppercase tracking-widest font-bold" style={{ fontSize: '0.65rem' }}>Total del Pedido</small>
+                            <h2 className="text-primary m-0 text-4xl font-black leading-none">{formatCurrency(totalEstimado)}</h2>
                         </div>
                     </div>
 
                     {isEditing && (
-                        <div className="form-group mb-0 mt-2">
-                            <label className="text-muted text-sm">Estado</label>
+                        <div className="form-group mb-0 mt-4 pt-4 border-t border-white/5">
+                            <label className="text-muted text-sm">Estado del Pedido</label>
                             <select
                                 value={status}
                                 onChange={e => setStatus(e.target.value)}
                                 className="form-control"
                                 style={{ fontWeight: 'bold' }}
                             >
-                                <option value="pendiente">Pendiente</option>
-                                <option value="pagado">Pagado</option>
-                                <option value="parcial">Parcial</option>
-                                <option value="cancelado">Cancelado</option>
+                                <option value="pendiente">⏳ Pendiente</option>
+                                <option value="pagado">✅ Pagado</option>
+                                <option value="parcial">🌓 Parcial</option>
+                                <option value="cancelado">❌ Cancelado</option>
                             </select>
                         </div>
                     )}
@@ -266,43 +297,6 @@ export default function OrderForm() {
                     })}
                 </div>
 
-                {/* Action Footer (Now part of the page flow) */}
-                <div className="card mt-4" style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    borderTop: '2px solid var(--primary)'
-                }}>
-                    <div className="flex justify-between items-center w-full">
-                        <div className="flex items-center gap-2">
-                            <label className="text-sm font-bold m-0">Domicilio:</label>
-                            <input
-                                type="number"
-                                value={deliveryFee}
-                                onChange={e => {
-                                    const raw = e.target.value;
-                                    if (raw === '') { setDeliveryFee(''); return; }
-                                    let val = parseInt(raw);
-                                    if (isNaN(val)) val = 0;
-                                    if (val < 0) val = 0;
-                                    if (val > 10000) val = 10000;
-                                    setDeliveryFee(val);
-                                }}
-                                className="form-control form-control-sm"
-                                style={{ width: '100px', fontWeight: 'bold' }}
-                                min="0"
-                                max="10000"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center w-full">
-                        <div>
-                            <small className="text-muted">Total Estimado</small>
-                            <h2 className="text-primary m-0">{formatCurrency(totalEstimado)}</h2>
-                        </div>
-                    </div>
-                </div>
             </form>
         </div>
     );
