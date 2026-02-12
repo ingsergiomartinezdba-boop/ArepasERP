@@ -8,10 +8,16 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .sql_models import Usuario
 
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 # Security Configuration
-SECRET_KEY = "xdr5tgb_arepaserp_secret_key_change_in_production"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 hours
+SECRET_KEY = os.getenv("SECRET_KEY", "b916f178229b357609204b73b22b1660bd5828e833f443579b7673f324da7fd8")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()

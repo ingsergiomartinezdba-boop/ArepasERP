@@ -1,4 +1,4 @@
-# Migración a Base de Datos Local PostgreSQL
+# Documentación de Base de Datos Local (PostgreSQL)
 
 ## Configuración Completada
 

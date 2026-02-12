@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { transfersService, paymentMethodsService } from '../services/api';
 import { ArrowRightLeft, Save, CreditCard } from 'lucide-react';
+import TripleDateSelector from '../components/TripleDateSelector';
 
 export default function Transfers() {
     const [transfers, setTransfers] = useState([]);
@@ -96,77 +97,85 @@ export default function Transfers() {
             </div>
 
             <div className="card mb-6 p-6">
-                <h3 className="mb-4 flex items-center gap-2">
-                    <ArrowRightLeft size={20} className="text-primary" />
-                    Nueva Transferencia
-                </h3>
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="form-group">
-                        <label>Origen (Desde)</label>
-                        <select
-                            value={form.origen_id}
-                            onChange={e => setForm({ ...form, origen_id: e.target.value })}
-                            required
-                        >
-                            <option value="">Seleccionar Origen...</option>
-                            {methods.map(m => (
-                                <option key={m.id} value={m.id}>{m.nombre}</option>
-                            ))}
-                        </select>
-                    </div>
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="m-0 flex items-center gap-2">
+                        <ArrowRightLeft size={20} className="text-primary" />
+                        Nuevo Movimiento
+                    </h3>
 
-                    <div className="form-group">
-                        <label>Destino (Hacia)</label>
-                        <select
-                            value={form.destino_id}
-                            onChange={e => setForm({ ...form, destino_id: e.target.value })}
-                            required
-                        >
-                            <option value="">Seleccionar Destino...</option>
-                            {methods.map(m => (
-                                <option key={m.id} value={m.id}>{m.nombre}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Valor</label>
-                        <input
-                            type="number"
-                            value={form.valor}
-                            onChange={e => setForm({ ...form, valor: e.target.value })}
-                            required
-                            min="1"
-                            placeholder="0"
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Fecha</label>
-                        <input
-                            type="date"
+                    <div className="flex items-center gap-3">
+                        <TripleDateSelector
                             value={form.fecha}
-                            onChange={e => setForm({ ...form, fecha: e.target.value })}
-                            required
+                            onChange={(newDate) => setForm({ ...form, fecha: newDate })}
+                            style={{ padding: '0.2rem 0.6rem', minWidth: '260px' }}
                         />
-                    </div>
 
-                    <div className="form-group md:col-span-2">
-                        <label>Descripción / Motivo</label>
-                        <textarea
-                            value={form.descripcion}
-                            onChange={e => setForm({ ...form, descripcion: e.target.value })}
-                            required
-                            rows="2"
-                            placeholder="Ej. Consignación ventas efectivo"
-                        />
-                    </div>
-
-                    <div className="md:col-span-2">
-                        <button type="submit" className="btn btn-primary w-full">
-                            <Save size={18} style={{ marginRight: '8px' }} />
-                            Registrar Movimiento
+                        <button type="submit" className="btn btn-primary" style={{ width: 'auto', padding: '0.6rem 1rem' }}>
+                            <Save size={20} />
                         </button>
+                    </div>
+                </div>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    <div style={{ display: 'flex', gap: '1rem', width: '100%', marginBottom: '0.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                            <label className="text-sm text-muted mb-1 block font-medium">Origen (Desde)</label>
+                            <select
+                                value={form.origen_id}
+                                onChange={e => setForm({ ...form, origen_id: e.target.value })}
+                                required
+                                className="w-full"
+                                style={{ height: '45px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'white', padding: '0 0.75rem' }}
+                            >
+                                <option value="">Seleccionar Origen...</option>
+                                {methods.map(m => (
+                                    <option key={m.id} value={m.id}>{m.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ flex: 1 }}>
+                            <label className="text-sm text-muted mb-1 block font-medium">Destino (Hacia)</label>
+                            <select
+                                value={form.destino_id}
+                                onChange={e => setForm({ ...form, destino_id: e.target.value })}
+                                required
+                                className="w-full"
+                                style={{ height: '45px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'white', padding: '0 0.75rem' }}
+                            >
+                                <option value="">Seleccionar Destino...</option>
+                                {methods.map(m => (
+                                    <option key={m.id} value={m.id}>{m.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <div className="form-group">
+                            <label>Valor</label>
+                            <input
+                                type="number"
+                                value={form.valor}
+                                onChange={e => setForm({ ...form, valor: e.target.value })}
+                                required
+                                min="1"
+                                placeholder="0"
+                            />
+                        </div>
+
+
+                        <div className="form-group md:col-span-2">
+                            <label>Descripción / Motivo</label>
+                            <textarea
+                                value={form.descripcion}
+                                onChange={e => setForm({ ...form, descripcion: e.target.value })}
+                                required
+                                rows="2"
+                                placeholder="Ej. Consignación ventas efectivo"
+                            />
+                        </div>
+
                     </div>
                 </form>
             </div>
