@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { suppliersService } from '../services/api';
-import { Plus, Edit, Trash2, Phone, Mail, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, Phone, Mail, MapPin, Save, X } from 'lucide-react';
 
 export default function Suppliers() {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [editingId, setEditingId] = useState(null);
+    const [editingId, setEditingId] = useState(null); // null = list, 'new' or ID = edit mode
     const [form, setForm] = useState({
         nombre: '',
         contacto: '',
@@ -34,12 +33,11 @@ export default function Suppliers() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            if (editingId) {
+            if (editingId && editingId !== 'new') {
                 await suppliersService.update(editingId, form);
             } else {
                 await suppliersService.create(form);
             }
-            setShowModal(false);
             setForm({ nombre: '', contacto: '', telefono: '', email: '', direccion: '' });
             setEditingId(null);
             loadSuppliers();
@@ -58,134 +56,194 @@ export default function Suppliers() {
             direccion: supplier.direccion || ''
         });
         setEditingId(supplier.id);
-        setShowModal(true);
+    };
+
+    const handleNew = () => {
+        setForm({ nombre: '', contacto: '', telefono: '', email: '', direccion: '' });
+        setEditingId('new');
     };
 
     const handleDelete = async (id) => {
-        if (confirm('¿Eliminar proveedor? Si tiene gastos asociados no se podrá eliminar.')) {
-            try {
-                await suppliersService.delete(id);
-                loadSuppliers();
-            } catch (error) {
-                alert("No se puede eliminar: Probablemente tenga gastos asociados.");
-            }
+        if (!confirm('¿Seguro que desea eliminar este proveedor? Si tiene gastos asociados no se podrá eliminar.')) return;
+        try {
+            await suppliersService.delete(id);
+            loadSuppliers();
+        } catch (error) {
+            const msg = error.response?.data?.detail || "No se puede eliminar: Probablemente tenga gastos asociados.";
+            alert(msg);
         }
     };
 
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-                <h1 style={{ marginBottom: 0 }}>Proveedores</h1>
+    if (editingId) {
+        return (
+            <div style={{ position: 'relative' }}>
                 <button
-                    onClick={() => { setShowModal(true); setEditingId(null); setForm({ nombre: '', contacto: '', telefono: '', email: '', direccion: '' }); }}
-                    className="btn btn-primary"
-                    style={{ width: 'auto', padding: '0.5rem 1rem' }}
+                    onClick={() => setEditingId(null)}
+                    className="btn-close-modal"
+                    style={{ top: '0', right: '0' }}
                 >
-                    <Plus size={18} />
+                    <X size={18} />
                 </button>
-            </div>
 
-            {loading ? <p>Cargando...</p> : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {suppliers.map(supplier => (
-                        <div key={supplier.id} className="card">
-                            <div className="flex justify-between items-start mb-2">
-                                <h3 className="font-bold text-lg">{supplier.nombre}</h3>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleEdit(supplier)} className="text-secondary hover:text-white">
-                                        <Edit size={16} />
-                                    </button>
-                                    <button onClick={() => handleDelete(supplier.id)} className="text-danger hover:text-white">
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="text-sm text-muted space-y-1">
-                                {supplier.contacto && <p><strong>Contacto:</strong> {supplier.contacto}</p>}
-                                {supplier.telefono && (
-                                    <p className="flex items-center gap-2">
-                                        <Phone size={14} /> {supplier.telefono}
-                                    </p>
-                                )}
-                                {supplier.email && (
-                                    <p className="flex items-center gap-2">
-                                        <Mail size={14} /> {supplier.email}
-                                    </p>
-                                )}
-                                {supplier.direccion && (
-                                    <p className="flex items-center gap-2">
-                                        <MapPin size={14} /> {supplier.direccion}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                    {suppliers.length === 0 && <p className="col-span-3 text-center text-muted">No hay proveedores registrados.</p>}
+                <div className="mb-6">
+                    <h1 className="m-0">{editingId !== 'new' ? 'Editar Proveedor' : 'Nuevo Proveedor'}</h1>
                 </div>
-            )}
 
-            {showModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 100,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <div className="card" style={{ width: '90%', maxWidth: '500px' }}>
-                        <h2>{editingId ? 'Editar Proveedor' : 'Nuevo Proveedor'}</h2>
-                        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
-                            <div>
-                                <label>Nombre Empresa *</label>
-                                <input
-                                    className="form-control"
-                                    value={form.nombre}
-                                    onChange={e => setForm({ ...form, nombre: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label>Contacto</label>
+                <div className="card">
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <label>Nombre Empresa *</label>
+                            <input
+                                className="form-control"
+                                value={form.nombre}
+                                onChange={e => setForm({ ...form, nombre: e.target.value })}
+                                required
+                                placeholder="Ej: Distribuidora de Harinas S.A.S."
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="form-group">
+                                <label>Persona de Contacto</label>
                                 <input
                                     className="form-control"
                                     value={form.contacto}
                                     onChange={e => setForm({ ...form, contacto: e.target.value })}
-                                    placeholder="Nombre de persona de contacto"
+                                    placeholder="Ej: Carlos Gómez"
                                 />
                             </div>
-                            <div>
+
+                            <div className="form-group">
                                 <label>Teléfono</label>
-                                <input
-                                    className="form-control"
-                                    value={form.telefono}
-                                    onChange={e => setForm({ ...form, telefono: e.target.value })}
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="tel"
+                                        className="form-control"
+                                        value={form.telefono}
+                                        onChange={e => setForm({ ...form, telefono: e.target.value })}
+                                        placeholder="Ej: 3001234567"
+                                    />
+                                </div>
                             </div>
-                            <div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="form-group">
                                 <label>Email</label>
                                 <input
                                     type="email"
                                     className="form-control"
                                     value={form.email}
                                     onChange={e => setForm({ ...form, email: e.target.value })}
+                                    placeholder="contacto@empresa.com"
                                 />
                             </div>
-                            <div>
+
+                            <div className="form-group">
                                 <label>Dirección</label>
                                 <input
                                     className="form-control"
                                     value={form.direccion}
                                     onChange={e => setForm({ ...form, direccion: e.target.value })}
+                                    placeholder="Ej: Calle 10 #20-30"
                                 />
                             </div>
+                        </div>
 
-                            <div className="flex gap-2 justify-end mt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary">Cancelar</button>
-                                <button type="submit" className="btn btn-primary">Guardar</button>
-                            </div>
-                        </form>
-                    </div>
+                        <div className="mt-8">
+                            <button type="submit" className="btn btn-primary font-bold" style={{ width: 'auto', padding: '0.8rem 2rem' }}>
+                                <Save size={20} style={{ marginRight: '8px' }} />
+                                {editingId !== 'new' ? 'Guardar Cambios' : 'Crear Proveedor'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            )}
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <div className="page-header flex justify-between items-center mb-6">
+                <h1 className="m-0">Proveedores</h1>
+                <button
+                    onClick={handleNew}
+                    className="btn btn-primary"
+                    style={{ width: 'auto', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                    <Plus size={20} /> Nuevo Proveedor
+                </button>
+            </div>
+
+            <div className="card overflow-x-auto">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                    <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
+                            <th className="p-3">ID</th>
+                            <th className="p-3">Empresa</th>
+                            <th className="p-3">Contacto</th>
+                            <th className="p-3">Detalles</th>
+                            <th className="p-3 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan="5" className="p-4 text-center">Cargando...</td></tr>
+                        ) : suppliers.length === 0 ? (
+                            <tr><td colSpan="5" className="p-4 text-center text-muted">No hay proveedores registrados.</td></tr>
+                        ) : (
+                            suppliers.map(supplier => (
+                                <tr key={supplier.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <td className="p-3 text-muted">#{supplier.id}</td>
+                                    <td className="p-3">
+                                        <div className="font-bold">{supplier.nombre}</div>
+                                        {supplier.direccion && (
+                                            <div className="text-xs text-muted flex items-center gap-1 mt-1">
+                                                <MapPin size={10} /> {supplier.direccion}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="p-3">
+                                        {supplier.contacto && <div className="text-sm font-semibold">{supplier.contacto}</div>}
+                                        {supplier.telefono && (
+                                            <div className="text-xs text-muted flex items-center gap-1">
+                                                <Phone size={10} /> {supplier.telefono}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="p-3">
+                                        {supplier.email ? (
+                                            <div className="flex items-center gap-1 text-sm text-primary">
+                                                <Mail size={12} /> {supplier.email}
+                                            </div>
+                                        ) : <span className="text-muted text-xs">-</span>}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                        <div className="flex justify-center gap-2">
+                                            <button
+                                                onClick={() => handleEdit(supplier)}
+                                                className="btn btn-secondary"
+                                                style={{ padding: '0.4rem' }}
+                                                title="Editar"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(supplier.id)}
+                                                className="btn btn-secondary text-danger"
+                                                style={{ padding: '0.4rem' }}
+                                                title="Eliminar"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }

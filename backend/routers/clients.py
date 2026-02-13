@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..sql_models import Cliente
+from ..sql_models import Cliente, Pedido
 from ..models import Client, ClientCreate, ClientUpdate
 
 router = APIRouter()
@@ -51,11 +51,24 @@ def update_client(client_id: int, client: ClientUpdate, db: Session = Depends(ge
 
 @router.delete("/{client_id}")
 def delete_client(client_id: int, db: Session = Depends(get_db)):
-    """Delete a client"""
+    """Delete a client if they have no associated orders"""
+    
     db_client = db.query(Cliente).filter(Cliente.id == client_id).first()
     if not db_client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    db.delete(db_client)
-    db.commit()
-    return {"message": "Client deleted successfully"}
+    # Check for associated orders
+    has_orders = db.query(Pedido).filter(Pedido.cliente_id == client_id).first()
+    if has_orders:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="No se puede eliminar el cliente porque tiene pedidos registrados. Primero debe eliminar o reasignar sus pedidos."
+        )
+    
+    try:
+        db.delete(db_client)
+        db.commit()
+        return {"message": "Client deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
