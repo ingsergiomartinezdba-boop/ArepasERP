@@ -45,20 +45,25 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         Gasto.fecha == today
     ).scalar() or 0
     
-    # Debtors (Pending Orders grouped by client)
+    # Detail of all pending orders to allow frontend to group and calculate age
     deudores_query = db.query(
-        Cliente.id,
+        Pedido.id,
+        Cliente.id.label('cliente_id'),
         Cliente.nombre,
-        func.sum(Pedido.total - Pedido.monto_pagado).label('saldo')
-    ).join(Pedido).filter(
-        Pedido.estado == 'pendiente'
-    ).group_by(Cliente.id, Cliente.nombre).all()
+        (Pedido.total - Pedido.monto_pagado).label('saldo'),
+        Pedido.fecha,
+        Pedido.created_at
+    ).join(Cliente).filter(
+        Pedido.estado.in_(['pendiente', 'parcial'])
+    ).all()
     
     deudores_data = [
         {
-            "cliente_id": d[0],
-            "nombre": d[1],
-            "saldo": float(d[2]) if d[2] else 0
+            "id": d[0],
+            "cliente_id": d[1],
+            "nombre": d[2],
+            "saldo": float(d[3]) if d[3] else 0,
+            "fecha": (d[4] or d[5]).isoformat() if (d[4] or d[5]) else None
         }
         for d in deudores_query
     ]

@@ -44,6 +44,27 @@ export default function Dashboard() {
 
     const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
 
+    const safeDateFormat = (dateStr, options = { day: '2-digit', month: '2-digit' }) => {
+        if (!dateStr) return 'S/F';
+
+        // Try manual parsing for typical ISO strings first to avoid TZ issues
+        if (typeof dateStr === 'string' && dateStr.includes('-')) {
+            const parts = dateStr.split('T')[0].split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                if (options.month === 'short') {
+                    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+                    return `${day} ${months[parseInt(month) - 1]}`;
+                }
+                return `${day}/${month}`;
+            }
+        }
+
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return 'S/F';
+        return d.toLocaleDateString('es-CO', options);
+    };
+
     // MAPPING FIELDS: Check if backend sends 'ventas' or 'ventas_hoy'. Use fallback.
     const ventasMes = stats.ventas_mes || 0;
     const gastosMes = stats.gastos_mes || 0;
@@ -53,16 +74,31 @@ export default function Dashboard() {
 
     // Group Debtors
     const groupedDebtors = deudores.reduce((acc, curr) => {
-        const clientId = curr.cliente_id || curr.nombre; // Fallback to name if id missing
+        const clientId = curr.cliente_id || curr.nombre;
         if (!acc[clientId]) {
             acc[clientId] = {
                 id: clientId,
                 nombre: curr.nombre,
                 total: 0,
+                fecha_mas_antigua: curr.fecha || curr.fecha_vencimiento || null,
                 items: []
             };
         }
         acc[clientId].total += curr.saldo;
+
+        // Track oldest date
+        const currentFecha = curr.fecha || curr.fecha_vencimiento;
+        if (currentFecha) {
+            const currentD = new Date(currentFecha);
+            const oldestD = acc[clientId].fecha_mas_antigua ? new Date(acc[clientId].fecha_mas_antigua) : null;
+
+            if (!isNaN(currentD.getTime())) {
+                if (!oldestD || isNaN(oldestD.getTime()) || currentD < oldestD) {
+                    acc[clientId].fecha_mas_antigua = currentFecha;
+                }
+            }
+        }
+
         acc[clientId].items.push(curr);
         return acc;
     }, {});
@@ -159,7 +195,14 @@ export default function Dashboard() {
                             >
                                 <div>
                                     <strong>{client.nombre}</strong>
-                                    <div className="text-muted text-xs">{client.items.length} facturas pendientes</div>
+                                    <div className="text-muted text-xs">
+                                        {client.items.length} facturas pendientes
+                                        {client.fecha_mas_antigua && (
+                                            <span style={{ marginLeft: '8px', opacity: 0.7 }}>
+                                                • Desde: {safeDateFormat(client.fecha_mas_antigua, { day: '2-digit', month: 'short' })}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="text-danger font-bold">{formatCurrency(client.total)}</div>
@@ -177,7 +220,12 @@ export default function Dashboard() {
                                             {client.items.map((item, idx) => (
                                                 <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                                     <td style={{ padding: '0.5rem 0', color: 'var(--text-muted)' }}>
-                                                        Vence: {new Date(item.fecha_vencimiento).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                        <span style={{ opacity: 0.6 }}>{safeDateFormat(item.fecha || item.fecha_vencimiento)}</span>
+                                                        {item.fecha_vencimiento && (
+                                                            <span style={{ marginLeft: '8px' }}>
+                                                                (Vence: {safeDateFormat(item.fecha_vencimiento)})
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td style={{ padding: '0.5rem 0', textAlign: 'right' }}>
                                                         {formatCurrency(item.saldo)}

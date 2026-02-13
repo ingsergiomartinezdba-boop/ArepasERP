@@ -41,8 +41,8 @@ def get_payment_history(db: Session = Depends(get_db)):
 @router.get("/accounts", dependencies=[Depends(get_current_user)])
 def get_receivable_accounts(db: Session = Depends(get_db)):
     """Get accounts receivable grouped by client"""
-    # Query pending orders
-    pending_orders = db.query(Pedido).filter(Pedido.estado == 'pendiente').all()
+    # Query pending or partially paid orders
+    pending_orders = db.query(Pedido).filter(Pedido.estado.in_(['pendiente', 'parcial'])).all()
     
     if not pending_orders:
         return []
@@ -59,20 +59,22 @@ def get_receivable_accounts(db: Session = Depends(get_db)):
         
         if cid not in clients_map:
             cliente = db.query(Cliente).filter(Cliente.id == cid).first()
+            order_date = order.fecha or order.created_at
             clients_map[cid] = {
                 "cliente_id": cid,
                 "nombre": cliente.nombre if cliente else "Desconocido",
                 "total_deuda": 0,
                 "ordenes_pendientes": 0,
-                "fecha_mas_antigua": order.fecha
+                "fecha_mas_antigua": order_date
             }
         
         clients_map[cid]['total_deuda'] += debt
         clients_map[cid]['ordenes_pendientes'] += 1
         
         # Keep oldest date
-        if order.fecha < clients_map[cid]['fecha_mas_antigua']:
-            clients_map[cid]['fecha_mas_antigua'] = order.fecha
+        order_date = order.fecha or order.created_at
+        if order_date and (not clients_map[cid]['fecha_mas_antigua'] or order_date < clients_map[cid]['fecha_mas_antigua']):
+            clients_map[cid]['fecha_mas_antigua'] = order_date
     
     return list(clients_map.values())
 
