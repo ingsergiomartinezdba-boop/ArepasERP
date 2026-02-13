@@ -44,7 +44,7 @@ export default function Dashboard() {
 
     const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
 
-    const safeDateFormat = (dateStr, options = { day: '2-digit', month: '2-digit' }) => {
+    const safeDateFormat = (dateStr, options = { day: '2-digit', month: '2-digit', year: 'numeric' }) => {
         if (!dateStr) return 'S/F';
 
         // Try manual parsing for typical ISO strings first to avoid TZ issues
@@ -54,9 +54,10 @@ export default function Dashboard() {
                 const [year, month, day] = parts;
                 if (options.month === 'short') {
                     const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-                    return `${day} ${months[parseInt(month) - 1]}`;
+                    const yearPart = options.year === 'numeric' ? ` ${year}` : '';
+                    return `${day} ${months[parseInt(month) - 1]}${yearPart}`;
                 }
-                return `${day}/${month}`;
+                return `${day}/${month}/${year}`;
             }
         }
 

@@ -414,8 +414,8 @@ export default function Receivables() {
                     </FormField>
 
                     <div className="flex gap-3 mt-4">
-                        <Button variant="secondary" onClick={() => setShowModal(false)} className="flex-1">Cancelar</Button>
-                        <Button type="submit" variant="primary" className="flex-1 font-bold">{editingPayment ? 'Guardar Cambios' : 'Confirmar Abono'}</Button>
+                        <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
+                        <Button type="submit" variant="primary" className="font-bold">{editingPayment ? 'Guardar Cambios' : 'Confirmar Abono'}</Button>
                     </div>
                 </form>
             </Modal>
@@ -534,14 +534,13 @@ export default function Receivables() {
                                         <Button
                                             variant="secondary"
                                             onClick={() => { setShowOrderModal(false); setSelectedOrder(null); }}
-                                            className="flex-1"
                                         >
                                             Cancelar
                                         </Button>
                                         <Button
                                             variant="success"
                                             onClick={handlePaySpecificOrder}
-                                            className="flex-1 font-black"
+                                            className="font-black"
                                             icon={<CheckCircle size={18} />}
                                         >
                                             Confirmar Liquidación

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ordersService, paymentMethodsService, clientsService } from '../services/api';
 import { Calendar, Search, Filter, Eye, FileText, TrendingUp, ShoppingBag } from 'lucide-react';
+import { Modal } from '../components';
 
 export default function OrdersReport() {
     const [orders, setOrders] = useState([]);
@@ -258,11 +259,11 @@ export default function OrdersReport() {
                         <button
                             onClick={handleGeneratePDF}
                             disabled={generatingPdf || !selectedClientId}
-                            className="btn btn-primary h-9 min-[550px]:h-6 text-sm min-[550px]:text-[0.7rem] px-3 min-[550px]:px-2"
-                            style={{ width: 'auto', minWidth: 0 }}
+                            className="btn btn-primary text-sm px-3"
+                            style={{ width: 'auto', minWidth: 'max-content', height: 'auto', padding: '0.4rem 0.8rem' }}
                             title="Generar PDF"
                         >
-                            PDF
+                            {generatingPdf ? '...' : 'PDF'}
                         </button>
                     </div>
                 </div>
@@ -323,21 +324,23 @@ export default function OrdersReport() {
             </div>
 
             {/* Detail Modal */}
-            {selectedOrder && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 100,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <div className="card" style={{ width: '90%', maxWidth: '500px', margin: 0, maxHeight: '90vh', overflowY: 'auto' }}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3>Detalle Pedido #{selectedOrder.id}</h3>
-                            <button className="text-muted" onClick={() => setSelectedOrder(null)}>✕</button>
-                        </div>
-
-                        <div className="mb-4">
-                            <p><strong>Cliente:</strong> {selectedOrder.cliente_nombre}</p>
-                            <p><strong>Fecha:</strong> {formatDate(selectedOrder.fecha)}</p>
+            <Modal
+                isOpen={!!selectedOrder}
+                onClose={() => setSelectedOrder(null)}
+                title={selectedOrder ? `Detalle Pedido #${selectedOrder.id}` : ''}
+                size="lg"
+            >
+                {selectedOrder && (
+                    <>
+                        <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/5">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-muted text-xs uppercase font-bold">Cliente</span>
+                                <span className="font-bold">{selectedOrder.cliente_nombre}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-muted text-xs uppercase font-bold">Fecha</span>
+                                <span className="font-bold">{formatDate(selectedOrder.fecha)}</span>
+                            </div>
                         </div>
 
                         <table style={{ width: '100%', marginBottom: '1rem', fontSize: '0.9rem' }}>
@@ -368,21 +371,14 @@ export default function OrdersReport() {
                             </tbody>
                             <tfoot style={{ borderTop: '2px solid var(--border)' }}>
                                 <tr>
-                                    <td colSpan="3" className="py-2 font-bold text-right">TOTAL</td>
-                                    <td className="py-2 font-bold text-right text-success">{formatCurrency(selectedOrder.total)}</td>
+                                    <td colSpan="3" className="py-2 font-bold text-right pt-4">TOTAL</td>
+                                    <td className="py-2 font-bold text-right text-success text-2xl pt-4">{formatCurrency(selectedOrder.total)}</td>
                                 </tr>
                             </tfoot>
                         </table>
-
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => setSelectedOrder(null)}
-                        >
-                            Cerrar
-                        </button>
-                    </div>
-                </div>
-            )}
+                    </>
+                )}
+            </Modal>
         </div>
     );
 }

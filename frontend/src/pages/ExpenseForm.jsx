@@ -139,7 +139,7 @@ export default function ExpenseForm() {
                         <div className="flex w-full gap-4 mb-4">
                             <button
                                 type="button"
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-bold transition-all ${form.estado_pago === 'pagado'
+                                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-bold transition-all ${form.estado_pago === 'pagado'
                                     ? 'bg-emerald-600 text-white'
                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                     }`}
@@ -150,7 +150,7 @@ export default function ExpenseForm() {
                             </button>
                             <button
                                 type="button"
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-bold transition-all ${form.estado_pago === 'credito'
+                                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-bold transition-all ${form.estado_pago === 'credito'
                                     ? 'bg-red-600 text-white'
                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                     }`}
