@@ -176,9 +176,6 @@ export default function Expenses() {
             <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
                 <div className="flex items-center gap-4">
                     <h1 style={{ margin: 0 }}>Gastos</h1>
-                    <button onClick={() => navigate('/expenses/new')} className="btn btn-primary" style={{ width: 'auto', padding: '0.5rem' }}>
-                        <Plus size={20} />
-                    </button>
                     <div className="flex gap-2 items-center">
                         <Calendar size={18} className="text-muted" />
                         <div className="flex gap-1 bg-card rounded border p-1 border-input">
