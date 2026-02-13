@@ -6,9 +6,25 @@ export default function Layout() {
     return (
         <div className="app-container">
             <aside className="sidebar">
-                <div className="sidebar-header">
-                    <ChefHat size={32} className="app-logo" />
-                    <span className="brand-text"><strong>Arepas Betania</strong> ERP</span>
+                <div className="sidebar-header" style={{ flexDirection: 'column', textAlign: 'center', gap: '0.75rem', padding: '1.5rem 0.5rem' }}>
+                    <img
+                        src="/logo-betania.jpeg"
+                        alt="Logo"
+                        style={{
+                            width: '60px',
+                            height: '60px',
+                            borderRadius: '10px',
+                            objectFit: 'contain',
+                            imageRendering: '-webkit-optimize-contrast',
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
+                            border: '1px solid rgba(255,255,255,0.05)'
+                        }}
+                        className="app-logo"
+                    />
+                    <div className="brand-text" style={{ fontSize: '1rem', lineHeight: '1.2' }}>
+                        <span style={{ display: 'block', fontWeight: '800', color: 'var(--primary)' }}>BETANIA</span>
+                        <span style={{ fontSize: '0.7rem', opacity: 0.7, letterSpacing: '2px' }}>DISTRIBUIDORES</span>
+                    </div>
                 </div>
 
                 <nav className="nav-list">
@@ -109,7 +125,11 @@ export default function Layout() {
                     </NavSection>
 
                     <button
-                        onClick={() => import('../lib/supabase').then(m => m.supabase.auth.signOut())}
+                        onClick={async () => {
+                            const { supabase } = await import('../lib/supabase');
+                            await supabase.auth.signOut();
+                            window.location.href = '/login';
+                        }}
                         className="nav-item mt-auto"
                         style={{ marginTop: 'auto', background: 'transparent', border: 'none', width: '100%', cursor: 'pointer' }}
                     >

@@ -68,6 +68,25 @@ a {
   position: relative;
 }
 
+.main-content::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 55%;
+  /* Slightly offset for sidebar */
+  width: 500px;
+  height: 500px;
+  background-image: url('/logo-betania.jpeg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  transform: translate(-50%, -50%) rotate(-10deg);
+  opacity: 0.03;
+  /* Very subtle watermark */
+  pointer-events: none;
+  z-index: 0;
+}
+
 @media (max-width: 768px) {
   .main-content {
     padding: 0.75rem;

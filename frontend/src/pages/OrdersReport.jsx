@@ -83,15 +83,29 @@ export default function OrdersReport() {
             // Note: We might want ANY unpaid order, so 'pendiente'. 
             // User asked for "cuentas por pagar".
             const res = await ordersService.getAll({
-                client_id: selectedClientId,
-                status: 'pendiente'
+                cliente_id: selectedClientId
             });
 
-            const pendingOrders = res.data;
+            // Filter for everything that is NOT paid and NOT cancelled
+            const pendingOrders = res.data.filter(o =>
+                o.estado !== 'pagado' &&
+                o.estado !== 'cancelado' &&
+                (o.total - (o.monto_pagado || 0)) > 0
+            );
+
+            if (pendingOrders.length === 0) {
+                alert("El cliente seleccionado no tiene cuentas por pagar pendientes.");
+                setGeneratingPdf(false);
+                return;
+            }
+
             pendingOrders.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
             const clientName = clients.find(c => c.id === parseInt(selectedClientId))?.nombre || "Cliente";
             const dateGen = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const totalDebt = pendingOrders.reduce((acc, o) => acc + o.total, 0);
+
+            // Calculate total debt based on remaining balances
+            const totalDebt = pendingOrders.reduce((acc, o) => acc + (o.total - (o.monto_pagado || 0)), 0);
 
             // Open Print Window
             const printWindow = window.open('', '_blank', 'width=800,height=600');
@@ -106,57 +120,67 @@ export default function OrdersReport() {
                 <head>
                     <title>Estado de Cuenta - ${clientName}</title>
                     <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; }
-                        h1 { text-align: center; color: #333; margin-bottom: 5px; }
-                        .header { margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+                        body { font-family: Arial, sans-serif; padding: 30px; color: #333; }
+                        h1 { text-align: center; color: #000; margin-bottom: 5px; text-transform: uppercase; }
+                        .header { margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 15px; }
                         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
-                        th { background-color: #f2f2f2; }
+                        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; font-size: 12px; }
+                        th { background-color: #f8f8f8; font-weight: bold; text-transform: uppercase; }
                         .text-right { text-align: right; }
-                        .total-row { font-weight: bold; background-color: #eee; }
-                        .footer { margin-top: 30px; text-align: center; font-size: 0.8rem; color: #666; }
-                        ul { margin: 0; padding-left: 20px; }
-                        li { margin-bottom: 2px; }
+                        .total-row { font-weight: bold; background-color: #eee; font-size: 14px; }
+                        .footer { margin-top: 40px; text-align: center; font-size: 0.9rem; color: #666; font-style: italic; }
+                        ul { margin: 0; padding-left: 15px; list-style-type: square; }
+                        .saldo-cell { font-weight: bold; color: #d32f2f; }
                     </style>
                 </head>
                 <body>
-                    <div class="header">
-                        <h1>Estado de Cuenta</h1>
-                        <p><strong>Cliente:</strong> ${clientName}</p>
-                        <p><strong>Fecha Generación:</strong> ${dateGen}</p>
+                    <div class="header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h1>Estado de Cuenta</h1>
+                            <p><strong>CLIENTE:</strong> ${clientName}</p>
+                            <p><strong>FECHA GENERACIÓN:</strong> ${dateGen}</p>
+                        </div>
+                        <img src="${window.location.origin}/logo-betania.jpeg" style="width: 100px; height: auto;" />
                     </div>
                     
                     <table>
                         <thead>
                             <tr>
-                                <th>Fecha Pedido</th>
-                                <th>Detalle Producto</th>
+                                <th>Fecha</th>
+                                <th>Detalle Pedido</th>
                                 <th class="text-right">Total</th>
+                                <th class="text-right">Abonos</th>
+                                <th class="text-right">Saldo</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${pendingOrders.map(o => `
+                            ${pendingOrders.map(o => {
+                const saldo = o.total - (o.monto_pagado || 0);
+                return `
                                 <tr>
                                     <td style="white-space: nowrap;">${new Date(o.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
                                     <td>
-                                        <ul style="list-style-type: none; padding: 0; margin: 0;">
+                                        <ul style="margin: 0; padding-left: 15px;">
                                             ${o.items.map(i => `
-                                                <li>${i.producto_nombre} <strong>x${i.cantidad}</strong></li>
+                                                <li>${i.producto_nombre} x${i.cantidad}</li>
                                             `).join('')}
                                         </ul>
                                     </td>
                                     <td class="text-right">$${new Intl.NumberFormat('es-CO').format(o.total)}</td>
+                                    <td class="text-right">$${new Intl.NumberFormat('es-CO').format(o.monto_pagado || 0)}</td>
+                                    <td class="text-right saldo-cell">$${new Intl.NumberFormat('es-CO').format(saldo)}</td>
                                 </tr>
-                            `).join('')}
+                                `;
+            }).join('')}
                             <tr class="total-row">
-                                <td colspan="2" class="text-right">TOTAL A PAGAR</td>
-                                <td class="text-right">$${new Intl.NumberFormat('es-CO').format(totalDebt)}</td>
+                                <td colspan="4" class="text-right">TOTAL PENDIENTE</td>
+                                <td class="text-right saldo-cell">$${new Intl.NumberFormat('es-CO').format(totalDebt)}</td>
                             </tr>
                         </tbody>
                     </table>
                     
                     <div class="footer">
-                        <p>Arepas Betania ERP</p>
+                        <p>Reporte generado por Arepas Betania ERP</p>
                     </div>
                     
                     <script>
