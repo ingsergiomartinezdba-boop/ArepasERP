@@ -1,4 +1,4 @@
-import { Home, PlusCircle, Users, BarChart2, Package, ChefHat, List, Settings, Truck, CreditCard, MessageCircle, FileText, ArrowRightLeft } from 'lucide-react';
+import { Home, PlusCircle, Users, BarChart2, Package, ChefHat, List, Settings, Truck, CreditCard, MessageCircle, FileText, ArrowRightLeft, ShoppingCart, TrendingUp, Wallet } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import NavSection from './NavSection';
 
@@ -36,7 +36,7 @@ export default function Layout() {
                         <span className="nav-text">Inicio</span>
                     </NavLink>
 
-                    <NavSection title="PEDIDOS" defaultOpen={true}>
+                    <NavSection title="PEDIDOS" icon={ShoppingCart} defaultOpen={true}>
                         <NavLink
                             to="/orders"
                             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -62,7 +62,7 @@ export default function Layout() {
                         </NavLink>
                     </NavSection>
 
-                    <NavSection title="GASTOS" defaultOpen={true}>
+                    <NavSection title="GASTOS" icon={TrendingUp} defaultOpen={true}>
                         <NavLink
                             to="/expenses/new"
                             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -80,7 +80,7 @@ export default function Layout() {
                         </NavLink>
                     </NavSection>
 
-                    <NavSection title="CAJA" defaultOpen={true}>
+                    <NavSection title="CAJA" icon={Wallet} defaultOpen={true}>
                         <NavLink
                             to="/transfers"
                             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -90,7 +90,7 @@ export default function Layout() {
                         </NavLink>
                     </NavSection>
 
-                    <NavSection title="CONFIGURACIÓN" defaultOpen={false}>
+                    <NavSection title="CONFIGURACIÓN" icon={Settings} defaultOpen={false}>
                         <NavLink
                             to="/clients"
                             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}

@@ -59,6 +59,17 @@ a {
   padding: 1rem;
   transition: width 0.3s ease;
   z-index: 50;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
 }
 
 .main-content {
@@ -132,17 +143,86 @@ a {
     width: var(--sidebar-width-mobile);
     padding: 0.5rem;
     align-items: center;
+    position: fixed;
+    height: 100vh;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-x: hidden;
   }
+
+  /* Expand sidebar when hovering (if using mouse) or when having a specific class (for touch) */
+  /* For simplicity, we can let it be expanded if the user touches a 'menu' button, 
+     but here we'll at least allow the items to be visible if we change the visibility rules */
 
   .sidebar .brand-text,
   .sidebar .nav-text,
-  .sidebar .nav-section-title {
+  .sidebar .nav-section-title span {
     display: none;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  /* When sidebar is wide - we can add a class later or just make it behave better */
+  .sidebar:hover,
+  .sidebar:active,
+  .sidebar:focus-within {
+    width: var(--sidebar-width);
+    align-items: stretch;
+    background-color: var(--bg-card);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar:hover .brand-text,
+  .sidebar:hover .nav-text,
+  .sidebar:hover .nav-section-title span {
+    display: inline;
+    opacity: 1;
+  }
+
+  .sidebar:hover .nav-item {
+    justify-content: flex-start;
+    padding: 0.75rem 1rem;
   }
 
   .nav-item {
     justify-content: center;
     padding: 0.75rem 0;
+    width: 100%;
+  }
+
+  .nav-section-title {
+    justify-content: center;
+    padding-left: 0 !important;
+  }
+
+  .nav-section-title div {
+    justify-content: center;
+  }
+
+  .nav-section-title .section-label,
+  .nav-section-title .chevron {
+    display: none;
+  }
+
+  .sidebar:hover .nav-section-title {
+    justify-content: space-between;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .sidebar:hover .nav-section-title div {
+    justify-content: flex-start;
+  }
+
+  .sidebar:hover .nav-section-title .section-label,
+  .sidebar:hover .nav-section-title .chevron {
+    display: inline;
+    opacity: 1;
+  }
+
+  .main-content {
+    margin-left: var(--sidebar-width-mobile);
+    padding: 1rem;
   }
 
   .page-header {
@@ -153,7 +233,45 @@ a {
 
   .page-header h1 {
     margin-bottom: 0;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+  }
+}
+
+/* Landscape Mode Optimizations */
+@media (max-height: 550px) {
+  .sidebar-header {
+    margin-bottom: 0.5rem !important;
+    padding: 0.5rem 0 !important;
+    flex-direction: row !important;
+    text-align: left !important;
+  }
+
+  .sidebar-header img {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .sidebar-header .brand-text {
+    font-size: 0.8rem !important;
+  }
+
+  .nav-section-title {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  .nav-item {
+    padding: 0.4rem 0.75rem !important;
+    font-size: 0.9rem;
+  }
+
+  .card {
+    padding: 1rem !important;
+  }
+
+  .main-content::before {
+    width: 300px;
+    height: 300px;
   }
 }
 
