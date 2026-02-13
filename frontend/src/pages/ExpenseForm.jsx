@@ -96,34 +96,37 @@ export default function ExpenseForm() {
                 </div>
             </div>
 
-            <div className="card p-6">
-                <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="form-group md:col-span-2">
-                            <label className="text-sm text-muted mb-1 block">Concepto / Detalle *</label>
-                            <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">
-                                    <Tag size={16} />
-                                </div>
-                                <input
-                                    className="pl-10"
-                                    value={form.concepto}
-                                    onChange={e => setForm({ ...form, concepto: e.target.value })}
-                                    placeholder="Ej. Bulto de maíz, Servicios públicos..."
-                                    required
-                                />
-                            </div>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                {/* SECCIÓN 1: IDENTIDAD DEL GASTO */}
+                <div className="card p-6" style={{ borderLeft: '4px solid var(--primary)' }}>
+                    <h3 className="text-sm uppercase tracking-widest font-bold text-primary mb-4 flex items-center gap-2">
+                        <Tag size={18} /> 1. Datos del Gasto
+                    </h3>
+
+                    <div className="flex gap-4 w-full mb-6">
+                        <div className="form-group" style={{ flex: 2 }}>
+                            <label className="text-sm text-muted mb-1 block font-medium">Proveedor *</label>
+                            <select
+                                value={form.proveedor_id}
+                                onChange={e => setForm({ ...form, proveedor_id: e.target.value })}
+                                className="w-full"
+                                required
+                                style={{ height: '45px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'white', padding: '0 0.75rem', fontWeight: 'bold' }}
+                            >
+                                <option value="">-- Seleccionar Proveedor --</option>
+                                {suppliers.map(s => (
+                                    <option key={s.id} value={s.id}>{s.nombre}</option>
+                                ))}
+                            </select>
                         </div>
 
-                        <div className="form-group">
-                            <label className="text-sm text-muted mb-1 block">Valor *</label>
-                            <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-success font-bold">
-                                    $
-                                </div>
+                        <div className="form-group flex-1">
+                            <label className="text-sm text-muted mb-1 block font-medium">Valor *</label>
+                            <div className="flex items-center gap-2" style={{ height: '45px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '0 0.75rem' }}>
+                                <span className="text-success font-bold text-xl">$</span>
                                 <input
                                     type="number"
-                                    className="pl-8 text-lg font-bold"
+                                    className="text-2xl font-black text-success w-full bg-transparent border-none outline-none p-0"
                                     value={form.valor}
                                     onChange={e => setForm({ ...form, valor: e.target.value })}
                                     placeholder="0"
@@ -133,123 +136,143 @@ export default function ExpenseForm() {
                         </div>
                     </div>
 
-                    <div className="form-group bg-card/50 p-4 rounded-xl border border-white/10 mb-6">
-                        <label className="mb-3 block text-sm font-medium text-muted-foreground uppercase tracking-wide">Estado del Pago</label>
-
-                        <div className="flex w-full gap-4 mb-4">
-                            <button
-                                type="button"
-                                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-bold transition-all ${form.estado_pago === 'pagado'
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                    }`}
-                                onClick={() => setForm({ ...form, estado_pago: 'pagado' })}
-                            >
-                                <DollarSign size={18} />
-                                PAGADO
-                            </button>
-                            <button
-                                type="button"
-                                className={`flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-bold transition-all ${form.estado_pago === 'credito'
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                    }`}
-                                onClick={() => setForm({ ...form, estado_pago: 'credito', medio_pago_id: '' })}
-                            >
-                                <FileText size={18} />
-                                CRÉDITO / POR PAGAR
-                            </button>
+                    <div className="grid grid-cols-1 gap-6">
+                        <div className="form-group">
+                            <label className="text-sm text-muted mb-1 block">Concepto / Detalle *</label>
+                            <input
+                                value={form.concepto}
+                                onChange={e => setForm({ ...form, concepto: e.target.value })}
+                                placeholder="Ej. Bulto de maíz, Servicios públicos..."
+                                required
+                            />
                         </div>
+                    </div>
+                </div>
 
-                        {form.estado_pago === 'pagado' ? (
-                            <div className="animate-fade-in space-y-2">
-                                <label className="text-sm text-gray-400 flex items-center gap-2">
-                                    <Wallet size={14} /> Medio de Pago *
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        value={form.medio_pago_id}
-                                        onChange={e => setForm({ ...form, medio_pago_id: e.target.value })}
-                                        className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none appearance-none transition-all"
-                                        style={{ backgroundImage: 'none' }}
-                                        required={form.estado_pago === 'pagado'}
+                {/* SECCIÓN 2: PAGO Y CLASIFICACIÓN */}
+                <div className="card p-6" style={{ borderLeft: '4px solid var(--secondary)' }}>
+                    <h3 className="text-sm uppercase tracking-widest font-bold text-success mb-6 flex items-center gap-2">
+                        <Wallet size={18} /> 2. Pago y Clasificación
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Fila 1: Estado, Categoría y Tipo */}
+                        <div className="flex gap-4 w-full md:col-span-2 items-end">
+                            <div className="form-group" style={{ flex: 1.5 }}>
+                                <label className="mb-2 block text-xs font-bold text-muted-foreground uppercase tracking-wider">Estado de Pago</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        className={`flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-lg text-[0.7rem] font-bold transition-all active:scale-95 border ${form.estado_pago === 'pagado'
+                                            ? 'shadow-[0_4px_15px_rgba(249,115,22,0.4)]'
+                                            : 'hover:bg-white/10'
+                                            }`}
+                                        style={{
+                                            background: form.estado_pago === 'pagado' ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' : 'rgba(255,255,255,0.05)',
+                                            color: form.estado_pago === 'pagado' ? 'white' : '#94a3b8',
+                                            borderColor: form.estado_pago === 'pagado' ? '#fb923c' : 'rgba(255,255,255,0.1)'
+                                        }}
+                                        onClick={() => setForm({ ...form, estado_pago: 'pagado' })}
                                     >
-                                        <option value="">-- Seleccionar Medio --</option>
-                                        {paymentMethods.map(m => (
-                                            <option key={m.id} value={m.id}>{m.nombre}</option>
-                                        ))}
-                                    </select>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-xs">
-                                        ▼
-                                    </div>
+                                        <DollarSign size={14} className={form.estado_pago === 'pagado' ? 'animate-pulse' : ''} />
+                                        PAGADO
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-lg text-[0.7rem] font-bold transition-all active:scale-95 border ${form.estado_pago === 'credito'
+                                            ? 'shadow-[0_4px_15px_rgba(249,115,22,0.4)]'
+                                            : 'hover:bg-white/10'
+                                            }`}
+                                        style={{
+                                            background: form.estado_pago === 'credito' ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' : 'rgba(255,255,255,0.05)',
+                                            color: form.estado_pago === 'credito' ? 'white' : '#94a3b8',
+                                            borderColor: form.estado_pago === 'credito' ? '#fb923c' : 'rgba(255,255,255,0.1)'
+                                        }}
+                                        onClick={() => setForm({ ...form, estado_pago: 'credito', medio_pago_id: '' })}
+                                    >
+                                        <FileText size={14} className={form.estado_pago === 'credito' ? 'animate-pulse' : ''} />
+                                        CRÉDITO
+                                    </button>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm animate-fade-in">
-                                <Clock size={16} />
-                                <span>El gasto se registrará como una <strong>cuenta por pagar</strong> pendiente.</span>
+
+                            <div className="form-group flex-1">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Categoría</label>
+                                <select
+                                    value={form.categoria}
+                                    onChange={e => setForm({ ...form, categoria: e.target.value })}
+                                    className="form-control"
+                                    style={{ height: '40px', fontSize: '0.8rem' }}
+                                >
+                                    <option value="materia_prima">📦 Materia Prima</option>
+                                    <option value="produccion">⚙️ Producción</option>
+                                    <option value="mantenimiento">🔧 Mantenimiento</option>
+                                    <option value="transporte">🚚 Transporte</option>
+                                    <option value="servicios">💡 Servicios</option>
+                                    <option value="nomina">👥 Nómina</option>
+                                    <option value="administracion">📁 Administración</option>
+                                    <option value="otros">✨ Otros</option>
+                                </select>
                             </div>
-                        )}
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group">
-                            <label className="text-sm text-muted mb-1 block">Categoría</label>
-                            <select
-                                value={form.categoria}
-                                onChange={e => setForm({ ...form, categoria: e.target.value })}
-                                className="form-control"
-                            >
-                                <option value="materia_prima">📦 Materia Prima</option>
-                                <option value="produccion">⚙️ Producción</option>
-                                <option value="mantenimiento">🔧 Mantenimiento</option>
-                                <option value="transporte">🚚 Transporte</option>
-                                <option value="servicios">💡 Servicios</option>
-                                <option value="nomina">👥 Nómina</option>
-                                <option value="administracion">📁 Administración</option>
-                                <option value="otros">✨ Otros</option>
-                            </select>
+                            <div className="form-group flex-1">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Tipo de Gasto</label>
+                                <select
+                                    value={form.tipo_gasto}
+                                    onChange={e => setForm({ ...form, tipo_gasto: e.target.value })}
+                                    className="form-control"
+                                    style={{ height: '40px', fontSize: '0.8rem' }}
+                                >
+                                    <option value="variable">📈 Variable</option>
+                                    <option value="fijo">🔒 Fijo</option>
+                                </select>
+                            </div>
                         </div>
 
-                        <div className="form-group">
-                            <label className="text-sm text-muted mb-1 block">Tipo de Gasto</label>
-                            <select
-                                value={form.tipo_gasto}
-                                onChange={e => setForm({ ...form, tipo_gasto: e.target.value })}
-                                className="form-control"
-                            >
-                                <option value="variable">📈 Variable</option>
-                                <option value="fijo">🔒 Fijo</option>
-                            </select>
+                        {/* Fila 2: Medio de Pago o Info de Crédito */}
+                        <div className="md:col-span-2">
+                            {form.estado_pago === 'pagado' ? (
+                                <div className="animate-fade-in bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/10 flex items-center gap-4 mt-2">
+                                    <div className="flex items-center gap-2 text-xs font-bold uppercase whitespace-nowrap" style={{ color: '#f97316' }}>
+                                        <Wallet size={16} />
+                                        Medio de Pago:
+                                    </div>
+                                    <div className="relative flex-1">
+                                        <select
+                                            value={form.medio_pago_id}
+                                            onChange={e => setForm({ ...form, medio_pago_id: e.target.value })}
+                                            className="w-full bg-black/20 border border-white/5 rounded-lg py-2 px-4 text-white focus:border-emerald-500 outline-none appearance-none text-sm"
+                                            required={form.estado_pago === 'pagado'}
+                                        >
+                                            <option value="">-- Seleccionar Medio --</option>
+                                            {paymentMethods.map(m => (
+                                                <option key={m.id} value={m.id}>{m.nombre}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs animate-fade-in mt-2 font-bold" style={{ color: '#ef4444' }}>
+                                    <Clock size={16} />
+                                    <span>Se registrará como una cuenta por pagar pendiente en el sistema.</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Fila 3: Observaciones */}
+                        <div className="form-group md:col-span-2 mt-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Observaciones adicionales</label>
+                            <textarea
+                                value={form.observaciones}
+                                onChange={e => setForm({ ...form, observaciones: e.target.value })}
+                                rows="2"
+                                placeholder="Notas opcionales sobre este gasto..."
+                                style={{ minHeight: '80px', background: 'rgba(255,255,255,0.02)' }}
+                            />
                         </div>
                     </div>
-
-                    <div className="form-group">
-                        <label className="text-sm text-muted mb-1 block">Proveedor {form.estado_pago === 'credito' ? '*' : '(Opcional)'}</label>
-                        <select
-                            value={form.proveedor_id}
-                            onChange={e => setForm({ ...form, proveedor_id: e.target.value })}
-                            className="form-control"
-                            required={form.estado_pago === 'credito'}
-                        >
-                            <option value="">-- Seleccionar Proveedor --</option>
-                            {suppliers.map(s => (
-                                <option key={s.id} value={s.id}>{s.nombre}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label className="text-sm text-muted mb-1 block">Observaciones adicionales</label>
-                        <textarea
-                            value={form.observaciones}
-                            onChange={e => setForm({ ...form, observaciones: e.target.value })}
-                            rows="2"
-                            placeholder="Notas importantes sobre este gasto..."
-                        />
-                    </div>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
     );
 }

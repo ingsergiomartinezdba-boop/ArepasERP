@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ordersService, reportsService } from '../services/api';
-import { RefreshCw, Copy, List, Calendar, Edit } from 'lucide-react';
+import { RefreshCw, Copy, List, Calendar, Edit, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function OrdersList() {
@@ -52,9 +52,12 @@ export default function OrdersList() {
         }
     };
 
+    const [isPagadoExpanded, setIsPagadoExpanded] = useState(false);
+
     const handleStatusClick = (order) => {
         setStatusModal({ open: true, orderId: order.id, currentStatus: order.estado });
         setSelectedMethod('');
+        setIsPagadoExpanded(false);
     };
 
     const confirmStatusChange = async (newStatus) => {
@@ -69,6 +72,7 @@ export default function OrdersList() {
                 medio_pago_id: newStatus === 'pagado' ? parseInt(selectedMethod) : null
             });
             setStatusModal({ open: false, orderId: null, currentStatus: '' });
+            setIsPagadoExpanded(false);
             loadData(); // Refresh list
         } catch (err) {
             console.error(err);
@@ -133,7 +137,7 @@ export default function OrdersList() {
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => handleStatusClick(order)}
-                                                    className={`badge ${order.estado === 'pendiente' ? 'text-danger' : 'text-success'}`}
+                                                    className={`badge ${order.estado === 'pagado' ? 'text-success' : 'text-danger'}`}
                                                     style={{ fontSize: '0.75rem', textTransform: 'uppercase', background: 'transparent', border: '1px solid currentColor', cursor: 'pointer' }}
                                                 >
                                                     {order.estado}
@@ -186,57 +190,121 @@ export default function OrdersList() {
                     backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 100,
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
-                    <div className="card" style={{ width: '90%', maxWidth: '300px', margin: 0 }}>
+                    <div className="card" style={{ width: '95%', maxWidth: '400px', margin: 0, position: 'relative' }}>
+                        <button
+                            onClick={() => setStatusModal({ ...statusModal, open: false })}
+                            style={{
+                                position: 'absolute',
+                                top: '-10px',
+                                right: '-10px',
+                                background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)',
+                                color: 'white',
+                                border: '1px solid var(--primary)',
+                                borderRadius: '50%',
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 15px rgba(245, 158, 11, 0.4)',
+                                zIndex: 101,
+                                transition: 'all 0.2s'
+                            }}
+                            className="active:scale-95"
+                            title="Cerrar"
+                        >
+                            <X size={20} />
+                        </button>
                         <h3>Actualizar Estado</h3>
-                        <div className="flex flex-col gap-2 mt-4">
-                            <button
-                                onClick={() => confirmStatusChange('pendiente')}
-                                className="btn btn-secondary"
-                                disabled={statusModal.currentStatus === 'pendiente'}
-                            >
-                                Pendiente
-                            </button>
 
-                            <hr style={{ borderColor: 'var(--border)', margin: '0.5rem 0' }} />
+                        <div className="flex flex-col gap-4 mt-6">
+                            <div className="grid grid-cols-3 gap-2 w-full items-stretch" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', width: '100%' }}>
+                                {/* Botón Pendiente */}
+                                <button
+                                    onClick={() => confirmStatusChange('pendiente')}
+                                    className="btn btn-secondary"
+                                    style={{ height: '50px', fontSize: '0.75rem', padding: '0', width: '100%', minWidth: '0' }}
+                                    disabled={statusModal.currentStatus === 'pendiente'}
+                                >
+                                    PENDIENTE
+                                </button>
 
-                            <label className="text-sm text-muted">Marcar como Pagado:</label>
-                            <select
-                                className="form-control mb-2"
-                                value={selectedMethod}
-                                onChange={e => setSelectedMethod(e.target.value)}
-                            >
-                                <option value="">-- Seleccionar Medio --</option>
-                                {paymentMethods.map(m => (
-                                    <option key={m.id} value={m.id}>{m.nombre}</option>
-                                ))}
-                            </select>
-                            <button
-                                onClick={() => confirmStatusChange('pagado')}
-                                className="btn btn-primary"
-                            >
-                                PAGADO
-                            </button>
+                                {/* Botón Pagado */}
+                                <div className="w-full">
+                                    <button
+                                        onClick={() => setIsPagadoExpanded(!isPagadoExpanded)}
+                                        className="btn"
+                                        style={{
+                                            background: isPagadoExpanded ? 'rgba(245, 158, 11, 0.1)' : 'linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)',
+                                            color: isPagadoExpanded ? 'var(--primary)' : 'white',
+                                            border: isPagadoExpanded ? '1px solid var(--primary)' : 'none',
+                                            height: '50px',
+                                            padding: '0',
+                                            fontSize: '0.75rem',
+                                            width: '100%',
+                                            minWidth: '0'
+                                        }}
+                                    >
+                                        {isPagadoExpanded ? 'PAGANDO...' : 'PAGADO'}
+                                    </button>
+                                </div>
 
-                            <button
-                                onClick={() => setStatusModal({ ...statusModal, open: false })}
-                                className="btn btn-secondary mt-2"
-                            >
-                                Cerrar
-                            </button>
+                                {/* Botón Anular */}
+                                <button
+                                    onClick={() => {
+                                        if (window.confirm('¿Seguro que deseas cancelar este pedido?')) {
+                                            confirmStatusChange('cancelado');
+                                        }
+                                    }}
+                                    className="btn btn-danger"
+                                    style={{
+                                        background: 'transparent',
+                                        border: '1px solid var(--danger)',
+                                        color: 'var(--danger)',
+                                        height: '50px',
+                                        padding: '0',
+                                        fontSize: '0.75rem',
+                                        width: '100%',
+                                        minWidth: '0'
+                                    }}
+                                >
+                                    ANULAR
+                                </button>
+                            </div>
 
-                            <hr style={{ borderColor: 'var(--border)', margin: '0.5rem 0' }} />
+                            {/* Dropdown de Medio de Pago y Confirmación Real */}
+                            {isPagadoExpanded && (
+                                <div className="animate-fade-in bg-white/5 p-4 rounded-xl border border-white/10 w-full mt-2">
+                                    <label className="text-[0.7rem] font-bold text-orange-500 uppercase tracking-widest mb-3 block text-center">Seleccionar Medio de Pago *</label>
+                                    <select
+                                        className="form-control mb-4"
+                                        value={selectedMethod}
+                                        onChange={e => setSelectedMethod(e.target.value)}
+                                        style={{ height: '45px', fontSize: '1rem', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}
+                                        autoFocus
+                                    >
+                                        <option value="">-- Escoger Medio --</option>
+                                        {paymentMethods.map(m => (
+                                            <option key={m.id} value={m.id}>{m.nombre}</option>
+                                        ))}
+                                    </select>
 
-                            <button
-                                onClick={() => {
-                                    if (window.confirm('¿Seguro que deseas cancelar este pedido? Se eliminará de las cuentas por cobrar.')) {
-                                        confirmStatusChange('cancelado');
-                                    }
-                                }}
-                                className="btn btn-danger"
-                                style={{ background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)' }}
-                            >
-                                ANULAR PEDIDO
-                            </button>
+                                    <button
+                                        onClick={() => confirmStatusChange('pagado')}
+                                        className="btn w-full"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                            color: 'white',
+                                            height: '50px',
+                                            fontSize: '0.9rem',
+                                            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                                        }}
+                                    >
+                                        CONFIRMAR PAGO
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

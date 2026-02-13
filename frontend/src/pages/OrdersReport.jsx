@@ -295,9 +295,7 @@ export default function OrdersReport() {
                                     <td className="p-3 text-sm">{formatDate(order.fecha)}</td>
                                     <td className="p-3 font-bold">{order.cliente_nombre}</td>
                                     <td className="p-3">
-                                        <span className={`badge ${order.estado === 'pagado' ? 'text-success' :
-                                            order.estado === 'cancelado' ? 'text-danger' : 'text-warning'
-                                            }`} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                        <span className={`badge ${order.estado === 'pagado' ? 'text-success' : 'text-danger'}`} style={{ background: 'rgba(255,255,255,0.05)' }}>
                                             {order.estado}
                                         </span>
                                     </td>

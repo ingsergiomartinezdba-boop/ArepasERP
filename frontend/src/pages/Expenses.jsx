@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { expensesService, suppliersService, paymentMethodsService } from '../services/api';
-import { Plus, Trash2, Calendar, Tag, Edit, Search, Filter, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Trash2, Calendar, Tag, Edit, Search, Filter, CheckCircle, XCircle, TrendingDown, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Expenses() {
@@ -173,48 +173,56 @@ export default function Expenses() {
 
     return (
         <div>
-            <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-                <div className="flex items-center gap-4">
-                    <h1 style={{ margin: 0 }}>Gastos</h1>
-                    <div className="flex gap-2 items-center">
-                        <Calendar size={18} className="text-muted" />
-                        <div className="flex gap-1 bg-card rounded border p-1 border-input">
-                            <select
-                                className="bg-transparent text-sm outline-none px-2 py-1"
-                                value={month.split('-')[1]}
-                                onChange={e => setMonth(`${month.split('-')[0]}-${e.target.value}`)}
-                            >
-                                <option value="01">Enero</option>
-                                <option value="02">Febrero</option>
-                                <option value="03">Marzo</option>
-                                <option value="04">Abril</option>
-                                <option value="05">Mayo</option>
-                                <option value="06">Junio</option>
-                                <option value="07">Julio</option>
-                                <option value="08">Agosto</option>
-                                <option value="09">Septiembre</option>
-                                <option value="10">Octubre</option>
-                                <option value="11">Noviembre</option>
-                                <option value="12">Diciembre</option>
-                            </select>
-                            <select
-                                className="bg-transparent text-sm outline-none px-2 py-1 border-l border-input"
-                                value={month.split('-')[0]}
-                                onChange={e => setMonth(`${e.target.value}-${month.split('-')[1]}`)}
-                            >
-                                {[2024, 2025, 2026, 2027, 2028].map(y => (
-                                    <option key={y} value={y}>{y}</option>
-                                ))}
-                            </select>
-                        </div>
+            <div className="page-header flex justify-between items-center mb-6">
+                <h1 className="m-0">Gastos</h1>
+                <div className="flex gap-2 items-center">
+                    <div className="flex gap-1 bg-card rounded border p-1 border-input">
+                        <select
+                            className="bg-transparent text-sm outline-none px-2 py-1"
+                            value={month.split('-')[1]}
+                            onChange={e => setMonth(`${month.split('-')[0]}-${e.target.value}`)}
+                        >
+                            <option value="01">Enero</option>
+                            <option value="02">Febrero</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Mayo</option>
+                            <option value="06">Junio</option>
+                            <option value="07">Julio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                        <select
+                            className="bg-transparent text-sm outline-none px-2 py-1 border-l border-input"
+                            value={month.split('-')[0]}
+                            onChange={e => setMonth(`${e.target.value}-${month.split('-')[1]}`)}
+                        >
+                            {[2024, 2025, 2026, 2027, 2028].map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
+            </div>
 
-                <div className="text-right flex items-center gap-4">
-                    <div>
-                        <p className="text-muted text-sm">Total Mes</p>
-                        <p className="text-xl font-bold text-danger">{formatCurrency(totalMonth)}</p>
+            <div className="orders-report-grid mb-6">
+                {/* Widget 1: Total Gastos */}
+                <div className="card p-3 min-[550px]:p-2 mb-0 h-full flex flex-col justify-between" style={{ minWidth: 0, overflow: 'hidden' }}>
+                    <div className="flex items-center gap-1 text-muted text-sm min-[550px]:text-[0.7rem] mb-1">
+                        <TrendingDown className="w-4 h-4 min-[550px]:w-3 min-[550px]:h-3 text-danger" /> Total Gastos Mes
                     </div>
+                    <div className="text-2xl min-[550px]:text-lg font-bold truncate" title={formatCurrency(totalMonth)}>{formatCurrency(totalMonth)}</div>
+                </div>
+
+                {/* Widget 2: Cantidad de Gastos */}
+                <div className="card p-3 min-[550px]:p-2 mb-0 h-full flex flex-col justify-between" style={{ minWidth: 0, overflow: 'hidden' }}>
+                    <div className="flex items-center gap-1 text-muted text-sm min-[550px]:text-[0.7rem] mb-1">
+                        <ShoppingBag className="w-4 h-4 min-[550px]:w-3 min-[550px]:h-3 text-primary" /> Cantidad Registros
+                    </div>
+                    <div className="text-2xl min-[550px]:text-lg font-bold truncate">{expenses.length}</div>
                 </div>
             </div>
 
