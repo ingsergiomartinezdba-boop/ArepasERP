@@ -261,6 +261,17 @@ export default function Dashboard() {
 
     const debtorsList = Object.values(groupedDebtors);
 
+    const escapeHtml = (unsafe) => {
+        if (!unsafe) return '';
+        return unsafe
+            .toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+
     const generatePDF = () => {
         if (!reportModal.data) return;
 
@@ -281,7 +292,7 @@ export default function Dashboard() {
         const htmlContent = `
             <html>
             <head>
-                <title>Reporte Cliente - ${client_name}</title>
+                <title>Reporte Cliente - ${escapeHtml(client_name)}</title>
                 <style>
                     body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 40px; color: #333; line-height: 1.4; }
                     .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #222; padding-bottom: 20px; margin-bottom: 30px; }
@@ -318,7 +329,7 @@ export default function Dashboard() {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         <div>
                             <strong style="color: #666; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 4px;">Cliente</strong>
-                            <span style="font-size: 16px; font-weight: bold;">${client_name}</span>
+                            <span style="font-size: 16px; font-weight: bold;">${escapeHtml(client_name)}</span>
                         </div>
                         <div>
                             <strong style="color: #666; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 4px;">Periodo Consultado</strong>
@@ -347,7 +358,7 @@ export default function Dashboard() {
                                     <td><strong>#${o.id}</strong></td>
                                     <td>
                                         <ul style="margin: 0; padding-left: 15px;">
-                                            ${o.items.map(i => `<li>${i}</li>`).join('')}
+                                            ${o.items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}
                                         </ul>
                                     </td>
                                     <td class="text-center">
@@ -404,7 +415,7 @@ export default function Dashboard() {
         const htmlContent = `
             <html>
             <head>
-                <title>Reporte Proveedor - ${vendor_name}</title>
+                <title>Reporte Proveedor - ${escapeHtml(vendor_name)}</title>
                  <style>
                     body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 40px; color: #333; line-height: 1.4; }
                     .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #222; padding-bottom: 20px; margin-bottom: 30px; }
@@ -435,7 +446,7 @@ export default function Dashboard() {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         <div>
                             <strong style="color: #666; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 4px;">Proveedor</strong>
-                            <span style="font-size: 16px; font-weight: bold;">${vendor_name}</span>
+                            <span style="font-size: 16px; font-weight: bold;">${escapeHtml(vendor_name)}</span>
                         </div>
                         <div>
                             <strong style="color: #666; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 4px;">Periodo Consultado</strong>
@@ -460,8 +471,8 @@ export default function Dashboard() {
                                 <td>${e.fecha ? new Date(e.fecha).toLocaleDateString('es-CO') : 'N/A'}</td>
                                 <td><strong>#${e.id}</strong></td>
                                 <td>
-                                    ${e.concepto}
-                                    ${e.observaciones ? `<br/><small style="color:#666; font-style:italic">${e.observaciones}</small>` : ''}
+                                    ${escapeHtml(e.concepto)}
+                                    ${e.observaciones ? `<br/><small style="color:#666; font-style:italic">${escapeHtml(e.observaciones)}</small>` : ''}
                                 </td>
                                 <td class="text-right font-bold">$${new Intl.NumberFormat('es-CO').format(e.valor)}</td>
                             </tr>
@@ -539,22 +550,40 @@ export default function Dashboard() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '1rem' }}>
                 {/* Monthly Stats */}
                 <div style={{ flex: '1 1 300px' }}>
-                    <h2 className="text-lg mb-2">Este Mes</h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div className="card" style={{ marginBottom: 0 }}>
-                            <div className="flex items-center gap-2 mb-2 text-muted">
-                                <TrendingUp size={16} className="text-success" />
-                                <small>Ventas Mes</small>
+                    <h2 className="text-lg mb-2">Mensual</h2>
+                    <div className="card" style={{ marginBottom: 0 }}>
+                        <div className="flex justify-between mb-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1 text-muted">
+                                    <TrendingUp size={16} className="text-success" />
+                                    <small>Ventas</small>
+                                </div>
+                                <h3 className="m-0 text-xl">{formatCurrency(ventasMes)}</h3>
                             </div>
-                            <h3>{formatCurrency(ventasMes)}</h3>
+                            <div className="text-right">
+                                <div className="flex items-center justify-end gap-2 mb-1 text-muted">
+                                    <small>Gastos</small>
+                                    <TrendingDown size={16} className="text-danger" />
+                                </div>
+                                <h3 className="m-0 text-xl">{formatCurrency(gastosMes)}</h3>
+                            </div>
                         </div>
 
-                        <div className="card" style={{ marginBottom: 0 }}>
-                            <div className="flex items-center gap-2 mb-2 text-muted">
-                                <TrendingDown size={16} className="text-danger" />
-                                <small>Gastos Mes</small>
+                        <div className="my-3 border-t border-white/10"></div>
+
+                        <div className="flex justify-between items-center">
+                            <div className="flex flex-col">
+                                <span className="text-xs text-muted mb-1">Balance Neto</span>
+                                <span className={`text-lg font-bold ${ventasMes - gastosMes >= 0 ? 'text-success' : 'text-danger'}`}>
+                                    {ventasMes - gastosMes >= 0 ? '+' : ''}{formatCurrency(ventasMes - gastosMes)}
+                                </span>
                             </div>
-                            <h3>{formatCurrency(gastosMes)}</h3>
+
+                            <div style={{ display: 'flex', gap: '8px', background: '#000', padding: '8px 12px', borderRadius: '20px', border: '1px solid #444' }}>
+                                <div title="Ganancia" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#22c55e', opacity: ventasMes > gastosMes ? 1 : 0.2, boxShadow: ventasMes > gastosMes ? '0 0 10px #22c55e' : 'none', transition: 'all 0.3s' }}></div>
+                                <div title="Equilibrio" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#eab308', opacity: Math.abs(ventasMes - gastosMes) < 1000 ? 1 : 0.2, boxShadow: Math.abs(ventasMes - gastosMes) < 1000 ? '0 0 10px #eab308' : 'none', transition: 'all 0.3s' }}></div>
+                                <div title="Déficit" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#ef4444', opacity: gastosMes > ventasMes ? 1 : 0.2, boxShadow: gastosMes > ventasMes ? '0 0 10px #ef4444' : 'none', transition: 'all 0.3s' }}></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -581,6 +610,8 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+
+
 
             {/* Cash Flow Widget */}
             <h2 className="text-lg mt-4 mb-2">Flujo de Caja</h2>

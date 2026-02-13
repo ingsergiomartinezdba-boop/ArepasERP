@@ -43,4 +43,4 @@ app.include_router(reports.router, prefix="/api/reports", tags=["Reports"], depe
 app.include_router(payment_methods.router, prefix="/api/payment-methods", tags=["Payment Methods"], dependencies=[Depends(get_current_user)])
 app.include_router(suppliers.router, prefix="/api/suppliers", tags=["Suppliers"], dependencies=[Depends(get_current_user)])
 app.include_router(transfers.router, prefix="/api/transfers", tags=["Transfers"], dependencies=[Depends(get_current_user)])
-app.include_router(receivables.router, prefix="/api/receivables", tags=["Receivables"])
+app.include_router(receivables.router, prefix="/api/receivables", tags=["Receivables"], dependencies=[Depends(get_current_user)])
