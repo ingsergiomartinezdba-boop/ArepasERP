@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { transfersService, paymentMethodsService } from '../services/api';
-import { ArrowRightLeft, Save, CreditCard } from 'lucide-react';
+import { ArrowRightLeft, Save, CreditCard, Trash2, Edit, X } from 'lucide-react';
 import TripleDateSelector from '../components/TripleDateSelector';
 
 export default function Transfers() {
@@ -15,6 +15,7 @@ export default function Transfers() {
         fecha: new Date().toISOString().split('T')[0],
         descripcion: ''
     });
+    const [editingId, setEditingId] = useState(null);
 
     useEffect(() => {
         loadData();
@@ -53,23 +54,67 @@ export default function Transfers() {
                 destino_id: Number(form.destino_id),
                 valor: Number(form.valor)
             };
-            await transfersService.create(payload);
-            alert("Transferencia registrada exitosamente");
+
+            if (editingId) {
+                await transfersService.update(editingId, payload);
+                alert("Transferencia actualizada exitosamente");
+                setEditingId(null);
+            } else {
+                await transfersService.create(payload);
+                alert("Transferencia registrada exitosamente");
+            }
+
             setForm({
-                ...form,
+                origen_id: '',
+                destino_id: '',
                 valor: '',
+                fecha: new Date().toISOString().split('T')[0],
                 descripcion: ''
             });
             loadData();
         } catch (error) {
             console.error(error);
-            alert("Error al registrar transferencia");
+            alert("Error al guardar transferencia");
         }
+    };
+
+    const handleEdit = (transfer) => {
+        setEditingId(transfer.id);
+        setForm({
+            origen_id: transfer.origen_id,
+            destino_id: transfer.destino_id,
+            valor: transfer.valor,
+            fecha: transfer.fecha.split('T')[0],
+            descripcion: transfer.descripcion || ''
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setForm({
+            origen_id: '',
+            destino_id: '',
+            valor: '',
+            fecha: new Date().toISOString().split('T')[0],
+            descripcion: ''
+        });
     };
 
     const getMethodName = (id) => methods.find(m => m.id === id)?.nombre || 'Desconocido';
 
     const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("¿Seguro que desea eliminar esta transferencia? Se revertirán los saldos.")) return;
+        try {
+            await transfersService.delete(id);
+            loadData();
+        } catch (error) {
+            console.error(error);
+            alert("Error al eliminar transferencia");
+        }
+    };
 
     return (
         <div>
@@ -99,23 +144,29 @@ export default function Transfers() {
             <div className="card mb-6 p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="m-0 flex items-center gap-2">
-                        <ArrowRightLeft size={20} className="text-primary" />
-                        Nuevo Movimiento
+                        <ArrowRightLeft size={20} className={editingId ? "text-warning" : "text-primary"} />
+                        {editingId ? 'Editar Movimiento' : 'Nuevo Movimiento'}
                     </h3>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <TripleDateSelector
                             value={form.fecha}
                             onChange={(newDate) => setForm({ ...form, fecha: newDate })}
                             style={{ padding: '0.2rem 0.6rem', minWidth: '260px' }}
                         />
 
-                        <button type="submit" className="btn btn-primary" style={{ width: 'auto', padding: '0.6rem 1rem' }}>
-                            <Save size={20} />
+                        <button
+                            type="submit"
+                            form="transfer-form"
+                            className="btn btn-primary"
+                            style={{ width: 'auto', padding: '0.6rem 1rem' }}
+                            title={editingId ? "Actualizar" : "Guardar"}
+                        >
+                            {editingId ? <Edit size={20} /> : <Save size={20} />}
                         </button>
                     </div>
                 </div>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <form id="transfer-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div style={{ display: 'flex', gap: '1rem', width: '100%', marginBottom: '0.5rem' }}>
                         <div style={{ flex: 1 }}>
                             <label className="text-sm text-muted mb-1 block font-medium">Origen (Desde)</label>
@@ -180,29 +231,57 @@ export default function Transfers() {
                 </form>
             </div>
 
-            <div className="card">
+            <div className="card overflow-x-auto">
                 <h3 className="mb-4">Historial Reciente</h3>
-                {loading ? <p>Cargando...</p> : (
-                    <div className="flex flex-col gap-3">
-                        {transfers.length === 0 ? <p className="text-muted text-center py-4">No hay movimientos.</p> :
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+                    <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
+                            <th className="p-3">ID</th>
+                            <th className="p-3">Fecha</th>
+                            <th className="p-3">Origen</th>
+                            <th className="p-3">Destino</th>
+                            <th className="p-3">Descripción</th>
+                            <th className="p-3 text-right">Valor</th>
+                            <th className="p-3 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan="7" className="p-4 text-center">Cargando...</td></tr>
+                        ) : transfers.length === 0 ? (
+                            <tr><td colSpan="7" className="p-4 text-center text-muted">No hay movimientos.</td></tr>
+                        ) : (
                             transfers.map(t => (
-                                <div key={t.id} className="p-3 rounded border border-white/10 bg-black/20 flex justify-between items-center">
-                                    <div>
-                                        <div className="text-sm text-muted mb-1">{new Date(t.fecha).toLocaleDateString()}</div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-danger font-medium">{t.origen_nombre || getMethodName(t.origen_id)}</span>
-                                            <ArrowRightLeft size={16} className="text-muted" />
-                                            <span className="text-success font-medium">{t.destino_nombre || getMethodName(t.destino_id)}</span>
-                                        </div>
-                                        <p className="text-sm text-gray-400 mt-1 italic">{t.descripcion}</p>
-                                    </div>
-                                    <div className="font-bold text-lg">
-                                        {formatCurrency(t.valor)}
-                                    </div>
-                                </div>
-                            ))}
-                    </div>
-                )}
+                                <tr key={t.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <td className="p-3">#{t.id}</td>
+                                    <td className="p-3 text-sm">{new Date(t.fecha).toLocaleDateString()}</td>
+                                    <td className="p-3 text-danger font-medium">{t.origen_nombre || getMethodName(t.origen_id)}</td>
+                                    <td className="p-3 text-success font-medium">{t.destino_nombre || getMethodName(t.destino_id)}</td>
+                                    <td className="p-3 text-muted italic text-sm">{t.descripcion}</td>
+                                    <td className="p-3 text-right font-bold">{formatCurrency(t.valor)}</td>
+                                    <td className="p-3 text-center">
+                                        <button
+                                            onClick={() => handleEdit(t)}
+                                            className="btn btn-secondary text-warning"
+                                            style={{ padding: '0.4rem' }}
+                                            title="Editar"
+                                        >
+                                            <Edit size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(t.id)}
+                                            className="btn btn-secondary text-danger"
+                                            style={{ padding: '0.4rem' }}
+                                            title="Eliminar"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
