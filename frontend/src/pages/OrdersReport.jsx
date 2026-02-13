@@ -1,11 +1,24 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ordersService, paymentMethodsService, clientsService } from '../services/api';
-import { Calendar, Search, Filter, Eye, FileText, TrendingUp, ShoppingBag } from 'lucide-react';
+import { Calendar, Search, Filter, Eye, FileText, TrendingUp, ShoppingBag, Edit, Trash2 } from 'lucide-react';
 import { Modal } from '../components';
 
 export default function OrdersReport() {
+    const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    const handleDeleteOrder = async (id) => {
+        if (!confirm('¿Seguro que desea eliminar este pedido?')) return;
+        try {
+            await ordersService.delete(id);
+            loadOrders();
+        } catch (error) {
+            console.error(error);
+            alert("Error al eliminar pedido");
+        }
+    };
 
     // Default to current month
     const now = new Date();
@@ -319,7 +332,19 @@ export default function OrdersReport() {
                                     <td className="p-3 text-sm">{formatDate(order.fecha)}</td>
                                     <td className="p-3 font-bold">{order.cliente_nombre}</td>
                                     <td className="p-3">
-                                        <span className={`badge ${order.estado === 'pagado' ? 'text-success' : 'text-danger'}`} style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                        <span
+                                            className={`badge ${order.estado === 'pagado' ? 'text-success' : 'text-danger'}`}
+                                            style={{
+                                                fontSize: '0.7rem',
+                                                textTransform: 'uppercase',
+                                                background: 'transparent',
+                                                border: '1px solid currentColor',
+                                                padding: '0.2rem 0.6rem',
+                                                borderRadius: '999px',
+                                                fontWeight: 'bold',
+                                                letterSpacing: '0.5px'
+                                            }}
+                                        >
                                             {order.estado}
                                         </span>
                                     </td>
@@ -329,14 +354,32 @@ export default function OrdersReport() {
                                     <td className="p-3 text-right text-muted">{formatCurrency(order.valor_domicilio)}</td>
                                     <td className="p-3 text-right font-bold text-success">{formatCurrency(order.total)}</td>
                                     <td className="p-3 text-center">
-                                        <button
-                                            onClick={() => setSelectedOrder(order)}
-                                            className="btn btn-secondary"
-                                            style={{ padding: '0.4rem' }}
-                                            title="Ver Detalle"
-                                        >
-                                            <Eye size={18} />
-                                        </button>
+                                        <div className="flex justify-center gap-2">
+                                            <button
+                                                onClick={() => setSelectedOrder(order)}
+                                                className="btn btn-secondary"
+                                                style={{ padding: '0.4rem' }}
+                                                title="Ver Detalle"
+                                            >
+                                                <Eye size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => navigate(`/orders/${order.id}/edit`)}
+                                                className="btn btn-secondary"
+                                                style={{ padding: '0.4rem' }}
+                                                title="Editar"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteOrder(order.id)}
+                                                className="btn btn-secondary text-danger"
+                                                style={{ padding: '0.4rem' }}
+                                                title="Eliminar"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))

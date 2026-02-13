@@ -193,25 +193,7 @@ export default function OrdersList() {
                     <div className="card" style={{ width: '95%', maxWidth: '400px', margin: 0, position: 'relative' }}>
                         <button
                             onClick={() => setStatusModal({ ...statusModal, open: false })}
-                            style={{
-                                position: 'absolute',
-                                top: '-10px',
-                                right: '-10px',
-                                background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)',
-                                color: 'white',
-                                border: '1px solid var(--primary)',
-                                borderRadius: '50%',
-                                width: '32px',
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 15px rgba(245, 158, 11, 0.4)',
-                                zIndex: 101,
-                                transition: 'all 0.2s'
-                            }}
-                            className="active:scale-95"
+                            className="btn-close-modal active:scale-95"
                             title="Cerrar"
                         >
                             <X size={20} />

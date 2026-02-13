@@ -425,6 +425,30 @@ select option {
   text-align: center;
 }
 
+.btn-close-modal {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 28px;
+  height: 28px;
+  background-color: var(--primary);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s, background-color 0.2s;
+  z-index: 10;
+}
+
+.btn-close-modal:hover {
+  transform: scale(1.1);
+  background-color: var(--primary-hover);
+}
+
 .text-success {
   color: var(--secondary);
 }
@@ -477,6 +501,22 @@ select option {
 
 .justify-between {
   justify-content: space-between;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.gap-2 {
+  gap: 0.5rem;
 }
 
 .items-center {

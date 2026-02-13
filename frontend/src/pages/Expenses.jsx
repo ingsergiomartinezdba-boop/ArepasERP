@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { expensesService, suppliersService, paymentMethodsService } from '../services/api';
-import { Plus, Trash2, Calendar, Tag, Edit, Search, Filter, CheckCircle, XCircle, TrendingDown, ShoppingBag } from 'lucide-react';
+import { Plus, Trash2, Calendar, Tag, Edit, Search, Filter, CheckCircle, XCircle, TrendingDown, ShoppingBag, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Expenses() {
@@ -135,6 +135,22 @@ export default function Expenses() {
         }
     };
 
+    const handleUnpayClick = async (expense) => {
+        if (!confirm('¿Desea marcar este gasto como PENDIENTE? Se eliminará el registro del método de pago.')) return;
+        try {
+            const payload = {
+                ...expense,
+                medio_pago_id: null,
+                proveedor_id: expense.proveedor_id ? parseInt(expense.proveedor_id) : null
+            };
+            await expensesService.update(expense.id, payload);
+            loadExpenses();
+        } catch (error) {
+            console.error(error);
+            alert("Error al revertir pago");
+        }
+    };
+
     const handleEditClick = (expense) => {
         setForm({
             concepto: expense.concepto,
@@ -168,6 +184,8 @@ export default function Expenses() {
     };
 
     const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+
+    const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     const totalMonth = expenses.reduce((acc, curr) => acc + curr.valor, 0);
 
@@ -226,86 +244,88 @@ export default function Expenses() {
                 </div>
             </div>
 
-            {loading ? <p>Cargando...</p> : (
-                <div className="flex" style={{ flexDirection: 'column', gap: '0.75rem' }}>
-                    {expenses.map(expense => (
-                        <div key={expense.id} className="card" style={{ marginBottom: 0, padding: '1rem' }}>
-                            <div className="flex justify-between items-start">
-                                <div style={{ flex: 1 }}>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <h3 style={{ fontSize: '1rem', margin: 0 }}>{expense.concepto}</h3>
-                                        <h2 className="text-danger font-bold" style={{ fontSize: '1.1rem', margin: 0 }}>
-                                            {formatCurrency(expense.valor)}
-                                        </h2>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-2 text-muted mt-2" style={{ fontSize: '0.8rem' }}>
-                                        <span className="flex items-center gap-1 badge" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                                            <Tag size={12} /> {expense.categoria.replace('_', ' ')}
+            <div className="card overflow-x-auto">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                    <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
+                            <th className="p-3">Fecha</th>
+                            <th className="p-3">Concepto</th>
+                            <th className="p-3">Categoría</th>
+                            <th className="p-3">Proveedor</th>
+                            <th className="p-3">Estado</th>
+                            <th className="p-3 text-right">Valor</th>
+                            <th className="p-3 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan="7" className="p-4 text-center">Cargando...</td></tr>
+                        ) : expenses.length === 0 ? (
+                            <tr><td colSpan="7" className="p-4 text-center text-muted">No se encontraron gastos en este mes.</td></tr>
+                        ) : (
+                            expenses.map(expense => (
+                                <tr key={expense.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <td className="p-3 text-sm">{formatDate(expense.fecha)}</td>
+                                    <td className="p-3">
+                                        <div className="font-bold">{expense.concepto}</div>
+                                        {expense.observaciones && <div className="text-xs text-muted italic">"{expense.observaciones}"</div>}
+                                    </td>
+                                    <td className="p-3">
+                                        <span className="badge text-xs" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                            {expense.categoria.replace('_', ' ')}
                                         </span>
-                                        <span className="flex items-center gap-1">
-                                            <Calendar size={12} /> {new Date(expense.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                        </span>
-                                        {expense.proveedor_nombre && (
-                                            <span className="flex items-center gap-1 text-primary">
-                                                Prove: {expense.proveedor_nombre}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {expense.observaciones && (
-                                        <p className="text-muted mt-1 text-sm italic">"{expense.observaciones}"</p>
-                                    )}
-
-                                    <div className="mt-2">
+                                    </td>
+                                    <td className="p-3 text-sm text-primary">
+                                        {expense.proveedor_nombre || '-'}
+                                    </td>
+                                    <td className="p-3">
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); !expense.medio_pago_id && handlePayClick(expense); }}
+                                            onClick={() => expense.medio_pago_id ? handleUnpayClick(expense) : handlePayClick(expense)}
                                             className={`badge ${!expense.medio_pago_id ? 'text-danger' : 'text-success'}`}
                                             style={{
                                                 fontSize: '0.7rem',
                                                 textTransform: 'uppercase',
                                                 background: 'transparent',
                                                 border: '1px solid currentColor',
-                                                cursor: !expense.medio_pago_id ? 'pointer' : 'default',
+                                                cursor: 'pointer',
                                                 padding: '0.2rem 0.6rem',
                                                 borderRadius: '999px',
-                                                fontWeight: 'bold',
-                                                letterSpacing: '0.5px'
+                                                fontWeight: 'bold'
                                             }}
-                                            title={!expense.medio_pago_id ? "Clic para registrar pago" : "Pagado"}
+                                            title={expense.medio_pago_id ? "Click para marcar como Pendiente" : "Click para marcar como Pagado"}
                                         >
                                             {!expense.medio_pago_id ? 'PENDIENTE' : 'PAGADO'}
                                         </button>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col justify-center gap-2 ml-4">
-                                    <button
-                                        onClick={() => handleEditClick(expense)}
-                                        className="btn btn-secondary"
-                                        style={{ padding: '0.4rem' }}
-                                        title="Editar"
-                                    >
-                                        <Edit size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(expense.id)}
-                                        className="btn btn-secondary text-danger"
-                                        style={{ padding: '0.4rem' }}
-                                        title="Anular / Eliminar"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    {expenses.length === 0 && (
-                        <div className="text-center p-8 card border-dashed">
-                            <p className="text-muted">No hay gastos registrados en este mes.</p>
-                        </div>
-                    )}
-                </div>
-            )}
+                                    </td>
+                                    <td className="p-3 text-right font-bold text-danger">
+                                        {formatCurrency(expense.valor)}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                        <div className="flex justify-center gap-2">
+                                            <button
+                                                onClick={() => handleEditClick(expense)}
+                                                className="btn btn-secondary"
+                                                style={{ padding: '0.4rem' }}
+                                                title="Editar"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(expense.id)}
+                                                className="btn btn-secondary text-danger"
+                                                style={{ padding: '0.4rem' }}
+                                                title="Anular"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Pay Modal */}
             {payModal.show && (
@@ -314,7 +334,15 @@ export default function Expenses() {
                     backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 100,
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
-                    <div className="card" style={{ width: '90%', maxWidth: '400px' }}>
+                    <div className="card" style={{ width: '90%', maxWidth: '400px', position: 'relative', overflow: 'visible' }}>
+                        <button
+                            onClick={() => setPayModal({ ...payModal, show: false })}
+                            className="btn-close-modal"
+                            title="Cerrar"
+                        >
+                            <X size={18} />
+                        </button>
+
                         <h2>Registrar Pago</h2>
                         <p className="text-muted">Valor a pagar: <span className="text-white font-bold">{formatCurrency(payModal.amount)}</span></p>
 
@@ -334,9 +362,8 @@ export default function Expenses() {
                                 </select>
                             </div>
 
-                            <div className="flex gap-2 justify-end mt-6">
-                                <button type="button" onClick={() => setPayModal({ ...payModal, show: false })} className="btn btn-secondary">Cancelar</button>
-                                <button type="submit" className="btn btn-success text-black font-bold">Confirmar Pago</button>
+                            <div className="mt-6">
+                                <button type="submit" className="btn btn-primary font-bold" style={{ width: '100%' }}>Confirmar Pago</button>
                             </div>
                         </form>
                     </div>
@@ -350,88 +377,97 @@ export default function Expenses() {
                     backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 100,
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
-                    <div className="card" style={{ width: '90%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h2>Editar Gasto</h2>
-                        <form onSubmit={handleUpdate} className="mt-4">
-                            <div className="form-group">
-                                <label>Concepto</label>
-                                <input
-                                    value={form.concepto}
-                                    onChange={e => setForm({ ...form, concepto: e.target.value })}
-                                    required
-                                />
-                            </div>
+                    <div className="card" style={{ width: '90%', maxWidth: '500px', position: 'relative', overflow: 'visible' }}>
+                        <button
+                            onClick={() => setEditMode(false)}
+                            className="btn-close-modal"
+                            title="Cerrar"
+                        >
+                            <X size={18} />
+                        </button>
 
-                            <div className="form-group">
-                                <label>Valor</label>
-                                <input
-                                    type="number"
-                                    value={form.valor}
-                                    onChange={e => setForm({ ...form, valor: e.target.value })}
-                                    required
-                                />
-                            </div>
+                        <div style={{ maxHeight: '85vh', overflowY: 'auto', paddingRight: '5px' }}>
+                            <h2>Editar Gasto</h2>
+                            <form onSubmit={handleUpdate} className="mt-4">
+                                <div className="form-group">
+                                    <label>Concepto</label>
+                                    <input
+                                        value={form.concepto}
+                                        onChange={e => setForm({ ...form, concepto: e.target.value })}
+                                        required
+                                    />
+                                </div>
 
-                            <div className="form-group">
-                                <label>Categoría</label>
-                                <select
-                                    value={form.categoria}
-                                    onChange={e => setForm({ ...form, categoria: e.target.value })}
-                                    className="form-control"
-                                >
-                                    <option value="materia_prima">Materia Prima</option>
-                                    <option value="produccion">Producción</option>
-                                    <option value="mantenimiento">Mantenimiento</option>
-                                    <option value="transporte">Transporte</option>
-                                    <option value="servicios">Servicios</option>
-                                    <option value="nomina">Nómina</option>
-                                    <option value="administracion">Admin</option>
-                                    <option value="otros">Otros</option>
-                                </select>
-                            </div>
+                                <div className="form-group">
+                                    <label>Valor</label>
+                                    <input
+                                        type="number"
+                                        value={form.valor}
+                                        onChange={e => setForm({ ...form, valor: e.target.value })}
+                                        required
+                                    />
+                                </div>
 
-                            <div className="form-group">
-                                <label>Proveedor</label>
-                                <select
-                                    value={form.proveedor_id}
-                                    onChange={e => setForm({ ...form, proveedor_id: e.target.value })}
-                                    className="form-control"
-                                >
-                                    <option value="">-- Seleccionar --</option>
-                                    {suppliers.map(s => (
-                                        <option key={s.id} value={s.id}>{s.nombre}</option>
-                                    ))}
-                                </select>
-                            </div>
+                                <div className="form-group">
+                                    <label>Categoría</label>
+                                    <select
+                                        value={form.categoria}
+                                        onChange={e => setForm({ ...form, categoria: e.target.value })}
+                                        className="form-control"
+                                    >
+                                        <option value="materia_prima">Materia Prima</option>
+                                        <option value="produccion">Producción</option>
+                                        <option value="mantenimiento">Mantenimiento</option>
+                                        <option value="transporte">Transporte</option>
+                                        <option value="servicios">Servicios</option>
+                                        <option value="nomina">Nómina</option>
+                                        <option value="administracion">Admin</option>
+                                        <option value="otros">Otros</option>
+                                    </select>
+                                </div>
 
-                            <div className="form-group">
-                                <label>Fecha</label>
-                                <input
-                                    type="date"
-                                    value={form.fecha}
-                                    onChange={e => setForm({ ...form, fecha: e.target.value })}
-                                    required
-                                />
-                            </div>
+                                <div className="form-group">
+                                    <label>Proveedor</label>
+                                    <select
+                                        value={form.proveedor_id}
+                                        onChange={e => setForm({ ...form, proveedor_id: e.target.value })}
+                                        className="form-control"
+                                    >
+                                        <option value="">-- Seleccionar --</option>
+                                        {suppliers.map(s => (
+                                            <option key={s.id} value={s.id}>{s.nombre}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                            <div className="form-group">
-                                <label>Observaciones</label>
-                                <textarea
-                                    value={form.observaciones}
-                                    onChange={e => setForm({ ...form, observaciones: e.target.value })}
-                                    className="form-control"
-                                    rows="1"
-                                />
-                            </div>
+                                <div className="form-group">
+                                    <label>Fecha</label>
+                                    <input
+                                        type="date"
+                                        value={form.fecha}
+                                        onChange={e => setForm({ ...form, fecha: e.target.value })}
+                                        required
+                                    />
+                                </div>
 
-                            <div className="flex gap-2 justify-end mt-4">
-                                <button type="button" onClick={() => setEditMode(false)} className="btn btn-secondary">Cancelar</button>
-                                <button type="submit" className="btn btn-primary">Actualizar</button>
-                            </div>
-                        </form>
+                                <div className="form-group">
+                                    <label>Observaciones</label>
+                                    <textarea
+                                        value={form.observaciones}
+                                        onChange={e => setForm({ ...form, observaciones: e.target.value })}
+                                        className="form-control"
+                                        rows="1"
+                                    />
+                                </div>
+
+                                <div className="mt-6">
+                                    <button type="submit" className="btn btn-primary font-bold" style={{ width: '100%' }}>Actualizar Gasto</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
-        </div>
+        </div >
     );
 }

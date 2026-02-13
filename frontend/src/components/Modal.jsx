@@ -80,24 +80,27 @@ export default function Modal({
                     width: '90%',
                     maxWidth: sizes[size] || sizes.md,
                     margin: 0,
-                    maxHeight: '90vh',
-                    overflow: 'auto',
+                    position: 'relative',
+                    overflow: 'visible', // Allow close button to overlap
                     ...style
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
-                {(title || showCloseButton) && (
-                    <div className="flex justify-between items-center mb-4">
-                        {title && <h3 className="m-0">{title}</h3>}
-                        {!title && <div></div>}
-                        {showCloseButton && <CloseButton onClick={onClose} />}
-                    </div>
-                )}
+                {/* Floating Close Button */}
+                {showCloseButton && <CloseButton onClick={onClose} />}
 
-                {/* Content */}
-                <div>
-                    {children}
+                <div style={{ maxHeight: '85vh', overflowY: 'auto', paddingRight: '5px' }}>
+                    {/* Header */}
+                    {title && (
+                        <div className="mb-4">
+                            <h2 className="m-0" style={{ fontSize: '1.5rem' }}>{title}</h2>
+                        </div>
+                    )}
+
+                    {/* Content */}
+                    <div>
+                        {children}
+                    </div>
                 </div>
             </div>
         </div>

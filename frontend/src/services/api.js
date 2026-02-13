@@ -73,6 +73,7 @@ export const ordersService = {
     create: (data) => api.post('/orders/', data),
     update: (id, data) => api.put(`/orders/${id}`, data),
     updateStatus: (id, data) => api.patch(`/orders/${id}/status`, data),
+    delete: (id) => api.delete(`/orders/${id}`),
 };
 
 export const expensesService = {
