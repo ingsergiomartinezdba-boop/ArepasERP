@@ -4,7 +4,7 @@ from sqlalchemy import text, func
 from typing import Optional
 from datetime import datetime
 from ..database import get_db
-from ..sql_models import Pedido, Gasto, Cliente, DetallePedido, Producto
+from ..sql_models import Pedido, Gasto, Cliente, DetallePedido, Producto, Proveedor
 from ..utils import get_now_colombia
 
 router = APIRouter()
@@ -171,3 +171,98 @@ def get_whatsapp_summary(date_str: Optional[str] = None, db: Session = Depends(g
         summary_text += "\n"
     
     return {"text": summary_text.strip()}
+
+@router.get("/client-report")
+def get_client_report(client_id: int, start_date: str, end_date: str, db: Session = Depends(get_db)):
+    s_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+    e_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+    
+    cliente = db.query(Cliente).filter(Cliente.id == client_id).first()
+    if not cliente:
+        return {"error": "Cliente no encontrado"}
+
+    orders = db.query(Pedido).filter(
+        Pedido.cliente_id == client_id,
+        func.date(Pedido.fecha).between(s_date, e_date),
+        Pedido.estado != 'cancelado'
+    ).order_by(Pedido.fecha.asc()).all()
+
+    period_orders = []
+    period_total = 0
+
+    for order in orders:
+        detalles = db.query(DetallePedido).filter(DetallePedido.pedido_id == order.id).all()
+        items = []
+        for d in detalles:
+            prod = db.query(Producto).filter(Producto.id == d.producto_id).first()
+            prod_name = prod.nombre if prod else "Producto"
+            items.append(f"{d.cantidad} x {prod_name}")
+        
+        period_total += float(order.total)
+        period_orders.append({
+            "id": order.id,
+            "fecha": order.fecha.isoformat(),
+            "total": float(order.total),
+            "estado": order.estado,
+            "items": items
+        })
+
+    pending_debt = db.query(func.sum(Pedido.total - Pedido.monto_pagado)).filter(
+        Pedido.cliente_id == client_id,
+        Pedido.estado.in_(['pendiente', 'parcial'])
+    ).scalar() or 0
+
+    return {
+        "client_name": cliente.nombre,
+        "start_date": start_date,
+        "end_date": end_date,
+        "period_total": float(period_total),
+        "total_pending_debt": float(pending_debt),
+        "orders": period_orders
+    }
+
+@router.get("/vendor-report")
+def get_vendor_report(vendor_id: int, start_date: str, end_date: str, db: Session = Depends(get_db)):
+    """Generate report for specific vendor"""
+    try:
+        s_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        e_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError:
+        return {"error": "Formato de fecha inválido. Usar YYYY-MM-DD"}
+    
+    proveedor = db.query(Proveedor).filter(Proveedor.id == vendor_id).first()
+    if not proveedor:
+        return {"error": "Proveedor no encontrado"}
+
+    gastos = db.query(Gasto).filter(
+        Gasto.proveedor_id == vendor_id,
+        Gasto.fecha.between(s_date, e_date)
+    ).order_by(Gasto.fecha.asc()).all()
+
+    period_expenses = []
+    period_total = 0
+
+    for gasto in gastos:
+        valor = float(gasto.valor) if gasto.valor else 0
+        period_total += valor
+        
+        descripcion = gasto.concepto
+        if gasto.categoria:
+            descripcion += f" ({gasto.categoria})"
+            
+        period_expenses.append({
+            "id": gasto.id,
+            "fecha": gasto.fecha.isoformat() if gasto.fecha else None,
+            "concepto": descripcion,
+            "valor": valor,
+            "observaciones": gasto.observaciones
+        })
+    
+    return {
+        "vendor_name": proveedor.nombre,
+        "start_date": start_date,
+        "end_date": end_date,
+        "period_total": float(period_total),
+        "expenses": period_expenses,
+        "total_pending_debt": 0
+    }

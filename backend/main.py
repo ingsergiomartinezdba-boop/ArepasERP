@@ -6,9 +6,9 @@ from .auth import get_current_user
 app = FastAPI(
     title="Arepas Factory ERP API",
     description="Backend for Arepas Factory Management System",
-    version="1.0.9"
+    version="1.1.0"
 )
-print("SERVER RELOADING V10 - AUTH ENABLED...")
+print("SERVER RELOADING V1.1.0 - VENDOR REPORT ENABLED...")
 
 # CORS Configuration - Restrict in production, allow specific for now
 origins = [

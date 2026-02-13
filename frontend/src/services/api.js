@@ -93,6 +93,8 @@ export const suppliersService = {
 export const reportsService = {
     getDashboard: () => api.get('/reports/dashboard'),
     getWhatsappSummary: (date) => api.get(`/reports/whatsapp-summary?date_str=${date || ''}`),
+    getClientReport: (clientId, startDate, endDate) => api.get('/reports/client-report', { params: { client_id: clientId, start_date: startDate, end_date: endDate } }),
+    getVendorReport: (vendorId, startDate, endDate) => api.get('/reports/vendor-report', { params: { vendor_id: vendorId, start_date: startDate, end_date: endDate } }),
 };
 
 export const paymentMethodsService = {

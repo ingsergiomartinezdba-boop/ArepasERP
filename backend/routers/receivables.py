@@ -98,7 +98,7 @@ def register_payment(payment: PaymentReceivedCreate, db: Session = Depends(get_d
         # 2. Apply to oldest pending orders (FIFO)
         pending_orders = db.query(Pedido).filter(
             Pedido.cliente_id == payment.cliente_id,
-            Pedido.estado == 'pendiente'
+            Pedido.estado.in_(['pendiente', 'parcial'])
         ).order_by(Pedido.fecha, Pedido.id).all()
         
         for order in pending_orders:
@@ -134,20 +134,7 @@ def register_payment(payment: PaymentReceivedCreate, db: Session = Depends(get_d
         
         db.commit()
         
-        # Return payment with client and method names
-        cliente = db.query(Cliente).filter(Cliente.id == db_payment.cliente_id).first()
-        medio = db.query(MedioPago).filter(MedioPago.id == db_payment.metodo_pago_id).first()
-        
-        return {
-            "id": db_payment.id,
-            "cliente_id": db_payment.cliente_id,
-            "cliente": cliente.nombre if cliente else "Desconocido",
-            "monto": float(db_payment.monto),
-            "fecha": db_payment.fecha,
-            "descripcion": db_payment.descripcion,
-            "metodo_pago_id": db_payment.metodo_pago_id,
-            "medio_pago": medio.nombre if medio else "-"
-        }
+        return db_payment
         
     except Exception as e:
         db.rollback()

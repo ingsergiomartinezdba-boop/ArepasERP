@@ -149,7 +149,7 @@ class OrderResponse(BaseModel):
 class PaymentReceivedBase(BaseModel):
     cliente_id: int
     monto: float
-    fecha: datetime
+    fecha: Optional[datetime] = None
     descripcion: Optional[str] = None
     metodo_pago_id: Optional[int] = None
 
