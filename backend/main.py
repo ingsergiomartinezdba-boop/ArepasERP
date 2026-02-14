@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import orders, clients, products, expenses, reports, payment_methods, suppliers, transfers, receivables, auth
-from .auth import get_current_user
+from routers import orders, clients, products, expenses, reports, payment_methods, suppliers, transfers, receivables, auth
+from auth import get_current_user
 
 app = FastAPI(
     title="Arepas Factory ERP API",
