@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
 from typing import List
-from ..database import get_db
-from ..sql_models import PagoRecibido, Pedido, Cliente, MedioPago, PagoPedido
-from ..models import PaymentReceivedCreate, PaymentReceived
-from ..auth import get_current_user
-from ..utils import get_now_colombia
+from database import get_db
+from sql_models import PagoRecibido, Pedido, Cliente, MedioPago, PagoPedido
+from models import PaymentReceivedCreate, PaymentReceived
+from auth import get_current_user
+from utils import get_now_colombia
 
 router = APIRouter(tags=["Receivables"])
 

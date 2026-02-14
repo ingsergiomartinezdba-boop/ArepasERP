@@ -2,10 +2,10 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
-from ..database import get_db
-from ..sql_models import Transferencia, MedioPago
-from ..models import Transfer, TransferCreate
-from ..utils import get_now_colombia
+from database import get_db
+from sql_models import Transferencia, MedioPago
+from models import Transfer, TransferCreate
+from utils import get_now_colombia
 
 router = APIRouter(tags=["transfers"])
 

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 from sqlalchemy.orm import Session
-from ..database import get_db
-from ..sql_models import Cliente, Pedido
-from ..models import Client, ClientCreate, ClientUpdate
+from database import get_db
+from sql_models import Cliente, Pedido
+from models import Client, ClientCreate, ClientUpdate
 
 router = APIRouter()
 

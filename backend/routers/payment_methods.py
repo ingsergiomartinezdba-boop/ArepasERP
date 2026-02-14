@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from sqlalchemy.orm import Session
-from ..database import get_db
-from ..sql_models import MedioPago
-from ..models import PaymentMethod, PaymentMethodCreate, PaymentMethodUpdate
+from database import get_db
+from sql_models import MedioPago
+from models import PaymentMethod, PaymentMethodCreate, PaymentMethodUpdate
 
 router = APIRouter()
 

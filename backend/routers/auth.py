@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from ..database import get_db
-from ..sql_models import Usuario
-from ..auth import create_access_token
+from database import get_db
+from sql_models import Usuario
+from auth import create_access_token
 
 router = APIRouter()
 
@@ -58,7 +58,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     }
 
 @router.get("/me")
-def get_current_user_info(current_user: Usuario = Depends(lambda: __import__('backend.auth', fromlist=['get_current_user']).get_current_user)):
+def get_current_user_info(current_user: Usuario = Depends(lambda: __import__('auth', fromlist=['get_current_user']).get_current_user)):
     """Get current authenticated user info"""
     return {
         "id": current_user.id,

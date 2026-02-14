@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from typing import Optional
 from datetime import datetime
-from ..database import get_db
-from ..sql_models import Pedido, Gasto, Cliente, DetallePedido, Producto, Proveedor
-from ..utils import get_now_colombia
+from database import get_db
+from sql_models import Pedido, Gasto, Cliente, DetallePedido, Producto, Proveedor
+from utils import get_now_colombia
 
 router = APIRouter()
 

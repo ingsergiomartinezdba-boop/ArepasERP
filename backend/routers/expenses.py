@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
-from ..database import get_db
-from ..sql_models import Gasto, Proveedor
-from ..models import Expense, ExpenseCreate
-from ..utils import get_now_colombia
+from database import get_db
+from sql_models import Gasto, Proveedor
+from models import Expense, ExpenseCreate
+from utils import get_now_colombia
 
 router = APIRouter()
 
