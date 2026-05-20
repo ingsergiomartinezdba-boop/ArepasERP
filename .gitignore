@@ -1,0 +1,92 @@
+# ─────────────────────────────────────────────────────────────────────────
+# ArepasERP — gitignore
+# Política: NO versionar dependencias, builds, secretos, certificados, ni
+# artefactos de desarrollo. Carpeta DEV/ contiene utilidades locales.
+# ─────────────────────────────────────────────────────────────────────────
+
+# ── Carpetas excluidas del repo (existen localmente, fuera del runtime de la app) ──
+DEV/
+migracion_Docker/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# ── Node / Frontend ──
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# ── Secretos (CRÍTICO) ──
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# ── Certificados privados ──
+*.pem
+*.key
+*.crt
+!frontend/certs/.gitignore
+!frontend/certs/README*
+!migracion_Docker/certs/.gitignore
+!migracion_Docker/certs/README*
+
+# ── Backups / dumps / archivos pesados ──
+*.tar
+*.tar.gz
+*.tgz
+*.sql.gz
+*.bak
+*.bak.*
+backups/
+/var/backups/
+
+# ── Bases de datos locales ──
+*.sqlite
+*.sqlite3
+*.db
+
+# ── Logs ──
+*.log
+logs/
+
+# ── Uploads (datos de usuario — no versionar) ──
+uploads/
+backend/uploads/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.suo
+*.sw?
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Cobertura / cache de tests ──
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ── Local overrides ──
+*.local
+local_settings.py
+
+# Claude Code local config
+.claude/

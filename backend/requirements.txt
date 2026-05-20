@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────────────────
+# ArepasERP — Backend
+# Política: subir a la última versión menor compatible (no major).
+# Última auditoría de CVEs: 2026-05-20 (ver documentacion/11_AUDITORIA_INTEGRAL.md §4)
+# ─────────────────────────────────────────────────────────────────────────
+
+# Stack web
+fastapi==0.109.2          # patch fix PYSEC-2024-38
+starlette==0.36.3         # compat con fastapi 0.109.x
+uvicorn==0.27.1
+gunicorn==23.0.0          # versión mantenida con CVEs corregidos
+
+# ORM y DB
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+pydantic==2.5.3
+
+# Auth y crypto
+PyJWT==2.10.1             # fix PYSEC-2025-183, PYSEC-2026-120
+cryptography==44.0.1      # fix CVE-2024-12797 y previos (44 es safe; 46 cambia API)
+passlib[bcrypt]==1.7.4
+
+# Utilidades
+python-dotenv==1.0.1
+python-multipart==0.0.18  # fix CVE-2024-53981
+requests==2.32.4          # fix CVE-2024-35195, CVE-2024-47081
+jinja2==3.1.6             # fix CVE-2024-34064, CVE-2024-56326, CVE-2024-56201, CVE-2025-27516
+email-validator==2.1.0.post1
+openpyxl==3.1.5
+reportlab==4.5.1
